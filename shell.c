@@ -31,6 +31,34 @@ void cshell_loop(){
 
 */
 
+/**
+   @brief Run program and wait for it to terminate
+   @param args from cshell_split_line
+   @return Always return 1 to continue execution
+*/
+int cshell_run(char **args){
+  pid_t pid;
+  int status;
+  
+  pid = fork();
+  
+  //Child process
+  if (pid == 0){
+    if (execvp(args[0],args) == -1){
+      perror("Failed to execute commands");
+      exit(EXIT_FAILURE);
+    } else {
+      //Parent process
+      do {
+	//Waits for child process to finish
+	waitpid(pid, &status, WUNTRACED);
+      } while (!WIFEXITED(status) && !WIFSIGNALED(status));
+      //WIFEXITED checks if child process terminated normally
+      //WIFSIGNALED checks if child process terminated by signal
+    }
+  }
+  return 1;
+}
 
 //Easier implementation of reading input dynamically
 char *cshell_read_line(){
@@ -116,8 +144,9 @@ int main(int argc, char **argv) {
   cshell_loop();
   return EXIT_SUCCESS;
  */
-  char *line = cshell_read_line();
-  char **args = cshell_split_line(line);
-  execvp(args[0], args);
-  return 0;
+  char *line;
+  char **args;
+  line = cshell_read_line();
+  args = cshell_split_line(line);
+  cshell_run(args);
 }
