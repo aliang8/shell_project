@@ -12,6 +12,7 @@ Anthony Liang, Sam Xu, Shaeq Ahmed
 
 /**
    @brief Loop for interpreting and executing commands
+
 void cshell_loop(){
   char *line;
   char **args;
@@ -27,23 +28,34 @@ void cshell_loop(){
     free(args);
   } while (status);
 }
+
 */
 
+
+//Easier implementation of reading input dynamically
+char *cshell_read_line(){
+  char *line = NULL;
+  ssize_t bufsize = 0; // have getline allocate a buffer for us
+  getline(&line, &bufsize, stdin);
+  return line;
+}
+
 //Initial buffer size
-#define CSHELL_BUFSIZE 2
+#define CSHELL_BUFSIZE 256
 /**
    @brief Read input from stdin
    @return Line from stdin
 */
+
+/*
 char *cshell_read_line(){
-  int bufsize = CSHELL_BUFSIZE;
-  int pos = 0;
+  int bufsize = CSHELL_BUFSIZE, pos = 0;
   char *line = malloc(sizeof(char)* bufsize);
   char c;
 
   while(1){
     //Reads in a character
-    c = getchar();
+    c = getc(stdin);
     
     //If we hit EOF, replace it with null and return
     if (c == EOF || c == '\n'){
@@ -61,6 +73,38 @@ char *cshell_read_line(){
     }
   }
 }
+*/
+
+
+//Token size
+/**
+   @brief Split line 
+   @param Line read from cshell_read_line
+   @return Array of args
+*/
+#define CSHELL_TOKEN_BUFSIZE 64
+#define CSHELL_TOKEN_DELIM " \t\r\n\a"
+char **cshell_split_line(char *line)
+{
+  int bufsize = CSHELL_TOKEN_BUFSIZE, pos = 0;
+  char **args = malloc(bufsize * sizeof(char*));
+  char *arg;
+
+  arg = strtok(line, CSHELL_TOKEN_DELIM);
+  while (arg != NULL) {
+    args[pos] = arg;
+    pos++;
+
+    if (pos >= bufsize) {
+      bufsize *= 2;
+      args = realloc(args, bufsize * sizeof(char*));
+    }
+
+    arg = strtok(NULL, CSHELL_TOKEN_DELIM);
+  }
+  args[pos] = NULL;
+  return args;
+}
 
 /**
    @brief Loop for shell 
@@ -71,7 +115,9 @@ int main(int argc, char **argv) {
   /*
   cshell_loop();
   return EXIT_SUCCESS;
-  */
+ */
   char *line = cshell_read_line();
-  printf("%s\n",line);
+  char **args = cshell_split_line(line);
+  execvp(args[0], args);
+  return 0;
 }
