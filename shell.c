@@ -17,10 +17,22 @@ int cshell_help(char **args);
 int cshell_exit(char **args);
 
 char *cmds[] = {
-  "cd"
-  "help"
+  "cd",
+  "help",
   "exit"
 };
+
+//array of function pointers
+int (*func[])(char**) = {
+  &cshell_cd
+  //cshell_help,
+  //cshell_exit
+};
+
+//returns the number of commands
+int num_cmds(){
+  return sizeof(cmds) / sizeof(char *);
+}
 
 /**
   @brief Builtin function implementation
@@ -147,7 +159,15 @@ int cshell_execute(char **args){
   }
   
   int i = 0;
-  for (i; i < 
+  for (i; i < num_cmds(); i++){
+    if (strcmp(args[0], cmds[i]) == 0){
+      //if command is valid
+      return (*func[i])(args);
+    }
+  }
+
+  return cshell_run(args);
+}
 
 /**
    @brief Loop for interpreting and executing commands
