@@ -10,32 +10,28 @@ Anthony Liang, Sam Xu, Shaeq Ahmed
 #include <unistd.h>
 
 /**
-   @brief Run program and wait for it to terminate
-   @param args from cshell_split_line
-   @return Always return 1 to continue execution
+  @brief Function headers for builtin shell commands
 */
-int cshell_run(char **args){
-  pid_t pid, wpid;
-  int status;
-  
-  pid = fork();
-  
-  //Child process
-  if (pid == 0){
-    if (execvp(args[0],args) == -1){
-      perror("Failed to execute commands");
-    }
-    exit(EXIT_FAILURE);
+int cshell_cd(char **args);
+int cshell_help(char **args);
+int cshell_exit(char **args);
+
+char *cmds[] = {
+  "cd"
+  "help"
+  "exit"
+};
+
+/**
+  @brief Builtin function implementation
+*/
+int cshell_cd(char **args){
+  if (args[1] == NULL) {
+    fprintf(stderr, "cd expects argument");
   } else {
-    //Parent process
-    do {
-      //Waits for child process to finish
-      wpid = waitpid(pid, &status, WUNTRACED);
-    } while (!WIFEXITED(status) && !WIFSIGNALED(status));
-    //WIFEXITED checks if child process terminated normally
-    //WIFSIGNALED checks if child process terminated by signal
+    chdir(args[1]);
+    return 1;
   }
-  return 1;
 }
 
 //Easier implementation of reading input dynamically
@@ -113,6 +109,47 @@ char **cshell_split_line(char *line)
 }
 
 /**
+   @brief Run program and wait for it to terminate
+   @param args from cshell_split_line
+   @return Always return 1 to continue execution
+*/
+int cshell_run(char **args){
+  pid_t pid, wpid;
+  int status;
+  
+  pid = fork();
+  
+  //Child process
+  if (pid == 0){
+    if (execvp(args[0],args) == -1){
+      perror("Failed to execute commands");
+    }
+    exit(EXIT_FAILURE);
+  } else {
+    //Parent process
+    do {
+      //Waits for child process to finish
+      wpid = waitpid(pid, &status, WUNTRACED);
+    } while (!WIFEXITED(status) && !WIFSIGNALED(status));
+    //WIFEXITED checks if child process terminated normally
+    //WIFSIGNALED checks if child process terminated by signal
+  }
+  return 1;
+}
+
+/**
+   @brief Execute commands if is implemented
+*/
+int cshell_execute(char **args){
+  if (args[0] == NULL){
+    //empty command was entered
+    return 1;
+  }
+  
+  int i = 0;
+  for (i; i < 
+
+/**
    @brief Loop for interpreting and executing commands
 */
 void cshell_loop(){
@@ -124,7 +161,7 @@ void cshell_loop(){
     printf("> ");
     line = cshell_read_line();
     args = cshell_split_line(line);
-    status = cshell_run(args);
+    status = cshell_execute(args);
     
     free(line);
     free(args);
