@@ -9,9 +9,7 @@ Anthony Liang, Sam Xu, Shaeq Ahmed
 #include <sys/wait.h>
 #include <unistd.h>
 
-/**
-  @brief Function headers for builtin shell commands
-*/
+//function headers for builtin commands
 int cshell_cd(char **args);
 int cshell_help(char **args);
 int cshell_exit(char **args);
@@ -24,9 +22,8 @@ char *cmds[] = {
 
 //array of function pointers
 int (*func[])(char**) = {
-  &cshell_cd
-  //cshell_help,
-  //cshell_exit
+  &cshell_cd,
+  &cshell_exit
 };
 
 //returns the number of commands
@@ -35,8 +32,9 @@ int num_cmds(){
 }
 
 /**
-  @brief Builtin function implementation
+   @brief Builtin function implementation
 */
+//cd 
 int cshell_cd(char **args){
   if (args[1] == NULL) {
     fprintf(stderr, "cd expects argument");
@@ -44,6 +42,12 @@ int cshell_cd(char **args){
     chdir(args[1]);
     return 1;
   }
+}
+
+//exit
+int cshell_exit(char **args){
+  //cshell_loop is terminated when status is 0
+  return 0;
 }
 
 //Easier implementation of reading input dynamically
@@ -62,44 +66,44 @@ char *cshell_read_line(){
 */
 
 /*
-char *cshell_read_line(){
+  char *cshell_read_line(){
   int bufsize = CSHELL_BUFSIZE, pos = 0;
   char *line = malloc(sizeof(char)* bufsize);
   char c;
 
   while(1){
-    //Reads in a character
-    c = getc(stdin);
+  //Reads in a character
+  c = getc(stdin);
     
-    //If we hit EOF, replace it with null and return
-    if (c == EOF || c == '\n'){
-      line[pos] = '\0';
-      return line;
-    } else {
-      line[pos] = c;
-    }
-    pos++;
-
-    //If we exceed the buffer size, dynamically reallocate memory.
-    if (pos > bufsize){
-      bufsize += CSHELL_BUFSIZE;
-      line = realloc(line, bufsize);
-    }
+  //If we hit EOF, replace it with null and return
+  if (c == EOF || c == '\n'){
+  line[pos] = '\0';
+  return line;
+  } else {
+  line[pos] = c;
   }
-}
+  pos++;
+
+  //If we exceed the buffer size, dynamically reallocate memory.
+  if (pos > bufsize){
+  bufsize += CSHELL_BUFSIZE;
+  line = realloc(line, bufsize);
+  }
+  }
+  }
 */
 
 
-//Token size
+
 /**
    @brief Split line 
    @param Line read from cshell_read_line
    @return Array of args
 */
+//Token size
 #define CSHELL_TOKEN_BUFSIZE 64
 #define CSHELL_TOKEN_DELIM " \t\r\n\a"
-char **cshell_split_line(char *line)
-{
+char **cshell_split_line(char *line){
   int bufsize = CSHELL_TOKEN_BUFSIZE, pos = 0;
   char **args = malloc(bufsize * sizeof(char*));
   char *arg;
@@ -157,7 +161,7 @@ int cshell_execute(char **args){
     //empty command was entered
     return 1;
   }
-  
+
   int i = 0;
   for (i; i < num_cmds(); i++){
     if (strcmp(args[0], cmds[i]) == 0){
@@ -165,7 +169,7 @@ int cshell_execute(char **args){
       return (*func[i])(args);
     }
   }
-
+  //if not builtin command
   return cshell_run(args);
 }
 
