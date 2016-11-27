@@ -37,7 +37,7 @@ void cshell_loop(){
    @return Always return 1 to continue execution
 */
 int cshell_run(char **args){
-  pid_t pid;
+  pid_t pid, wpid;
   int status;
   
   pid = fork();
@@ -46,16 +46,16 @@ int cshell_run(char **args){
   if (pid == 0){
     if (execvp(args[0],args) == -1){
       perror("Failed to execute commands");
-      exit(EXIT_FAILURE);
-    } else {
-      //Parent process
-      do {
-	//Waits for child process to finish
-	waitpid(pid, &status, WUNTRACED);
-      } while (!WIFEXITED(status) && !WIFSIGNALED(status));
-      //WIFEXITED checks if child process terminated normally
-      //WIFSIGNALED checks if child process terminated by signal
     }
+    exit(EXIT_FAILURE);
+  } else {
+    //Parent process
+    do {
+      //Waits for child process to finish
+      wpid = waitpid(pid, &status, WUNTRACED);
+    } while (!WIFEXITED(status) && !WIFSIGNALED(status));
+    //WIFEXITED checks if child process terminated normally
+    //WIFSIGNALED checks if child process terminated by signal
   }
   return 1;
 }
