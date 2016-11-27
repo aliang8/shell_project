@@ -9,28 +9,6 @@ Anthony Liang, Sam Xu, Shaeq Ahmed
 #include <sys/wait.h>
 #include <unistd.h>
 
-
-/**
-   @brief Loop for interpreting and executing commands
-
-void cshell_loop(){
-  char *line;
-  char **args;
-  int status;
-
-  do {
-    printf("> ");
-    line = cshell_read_line();
-    args = cshell_split_line(line);
-    status = cshell_execute(args);
-    
-    free(line);
-    free(args);
-  } while (status);
-}
-
-*/
-
 /**
    @brief Run program and wait for it to terminate
    @param args from cshell_split_line
@@ -135,18 +113,30 @@ char **cshell_split_line(char *line)
 }
 
 /**
+   @brief Loop for interpreting and executing commands
+*/
+void cshell_loop(){
+  char *line;
+  char **args;
+  int status;
+
+  do {
+    printf("> ");
+    line = cshell_read_line();
+    args = cshell_split_line(line);
+    status = cshell_run(args);
+    
+    free(line);
+    free(args);
+  } while (status);
+}
+
+/**
    @brief Loop for shell 
    @param argc Argument count
    @param argv Argument array of pointers
 */
-int main(int argc, char **argv) {
-  /*
+int main(int argc, char **argv) {  
   cshell_loop();
   return EXIT_SUCCESS;
- */
-  char *line;
-  char **args;
-  line = cshell_read_line();
-  args = cshell_split_line(line);
-  cshell_run(args);
 }
