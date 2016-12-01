@@ -14,10 +14,16 @@ Anthony Liang, Sam Xu, Shaeq Ahmed
 #include <fcntl.h>
 #include <sys/types.h>
 #include <pwd.h>
+#include "shell.h"
+#include <termios.h>
+#include <signal.h>
 
 #define GRN   "\033[01;32m"
 #define BLU   "\033[01;34m"
 #define RESET "\x1B[0m"
+
+#define MAXTOKEN 256 //max tokens
+#define MAXLINE 1024 //max characters
 
 //function headers for builtin commands
 int cshell_cd(char **args);
@@ -52,6 +58,7 @@ int outfound(char** args){
   }
   return -1;
 }
+
 
 //array of function pointers
 int (*func[])(char**) = {
@@ -99,36 +106,6 @@ char *cshell_read_line(){
    @brief Read input from stdin
    @return Line from stdin
 */
-
-/*
-  char *cshell_read_line(){
-  int bufsize = CSHELL_BUFSIZE, pos = 0;
-  char *line = malloc(sizeof(char)* bufsize);
-  char c;
-
-  while(1){
-  //Reads in a character
-  c = getc(stdin);
-    
-  //If we hit EOF, replace it with null and return
-  if (c == EOF || c == '\n'){
-  line[pos] = '\0';
-  return line;
-  } else {
-  line[pos] = c;
-  }
-  pos++;
-
-  //If we exceed the buffer size, dynamically reallocate memory.
-  if (pos > bufsize){
-  bufsize += CSHELL_BUFSIZE;
-  line = realloc(line, bufsize);
-  }
-  }
-  }
-*/
-
-
 
 /**
    @brief Split line 
@@ -201,14 +178,19 @@ int cshell_execute(char **args){
   int out = outfound(args);
 
   if(in != -1){
-    
+    int fd0 = open(args[out-1], O_RDONLY, 0);
+    dup2(fd0, STDIN_FILENO);
+    close(fd0);
+    args[in] = 0;
+    args += in+1;
+    in = 0;
   }
   if(out != -1){
     int fd1 = creat(args[out+1], 0644);
     dup2(fd1, STDOUT_FILENO);
     close(fd1);
     args[out] = NULL;
-    out = -1;
+    out = 0;
   }
   
   int i = 0;
@@ -274,27 +256,82 @@ char* makeprompt(){
   return ret;
 }
 
-void cshell_loop(){
-  char *line;
-  char **args;
-  int status;
-  do {
-    //allows for autocompletion
-    //rl_bind_key('\t',rl_complete);
-    //printf("> ");
-    //line = cshell_read_line();
-    char* prompt = makeprompt();
-    line = readline(prompt);
-    if(!line)
-      break;
-    add_history(line);
-    args = cshell_split_line(line);
-    status = cshell_execute(args);
+/* void cshell_loop(){ */
+/*   char *line; */
+/*   char **args; */
+/*   int status; */
+/*   do { */
+/*     //allows for autocompletion */
+/*     //rl_bind_key('\t',rl_complete); */
+/*     //printf("> "); */
+/*     //line = cshell_read_line(); */
+/*     char* prompt = makeprompt(); */
+/*     line = readline(prompt); */
+/*     if(!line) */
+/*       break; */
+/*     add_history(line); */
+/*     args = cshell_split_line(line); */
+/*     status = cshell_execute(args); */
     
-    free(line);
-    free(args);
-    free(prompt);
-  } while (status);
+/*     free(line); */
+/*     free(args); */
+/*     free(prompt); */
+/*   } while (status); */
+/* } */
+void signalHandler_int(int i){
+  if(kill(pid,SIGTERM) == 0) {
+    printf("\nprocessing %d a SIGINT signal\n", pid);
+    no_reprint = 1;
+  }else{
+    printf("\n");
+  }
+}
+
+void signalHandler_child(int i){
+  while(waitpid(-1, NULL, WNOHANG) > 0){
+    printf("\n");
+  }
+}
+
+/**
+   @brief Making sure the subshell is not running as a foreground job. 
+   *Initialize the pid of the subshell so it could support job control
+   *Post initialization allows the sub-shell to have its own child processes
+   *We used the approach explained here to set things up
+   *www.gnu.org/software/libc/manual/html_node/Initializing-the-Shell.html
+*/
+
+void initialize(){
+  SH_PID = getpid();
+  SH_IS_INTERACTIVE = isatty(STDIN_FILENO); //safety
+  
+  if (SH_IS_INTERACTIVE){
+    //Loop the shell into the foreground
+    while(tcgetpgrp(STDIN_FILENO) != (SH_PGID = getpgrp()))
+      kill(SH_PID,SIGTTIN);
+
+    
+    act_child.sa_handler = signalHandler_child;
+    act_int.sa_handler = signalHandler_int;
+
+    sigaction(SIGCHLD, &act_child, 0);
+    sigaction(SIGINT, &act_int, 0);
+
+    setpgid(SH_PID, SH_PID);
+    SH_PGID = getpgrp();
+    if(SH_PID != SH_PGID){
+      printf("Something went wrong, unable to set shell as process leader");
+      exit(EXIT_FAILURE);
+    }
+
+    currentDir = (char*) calloc(1024, sizeof(char));
+
+    //sets and controls the terminal with the shell
+    tcsetpgrp(STDIN_FILENO, SH_PGID);
+    tcgetattr(STDIN_FILENO, &SH_TMODES);
+
+  }
+  
 }
 
 /**
@@ -302,7 +339,16 @@ void cshell_loop(){
    @param argc Argument count
    @param argv Argument array of pointers
 */
-int main(int argc, char **argv) { 
-  cshell_loop();
+int main(int argc, char **argv) {
+  char line[MAXLINE];
+  char *tokens[MAXTOKEN];
+  int numTokens;
+
+  no_reprint = 0; //prevent reprint in certain cases
+
+  pid = -1337; //impossible pid
+
+  initialize();
+  
   return EXIT_SUCCESS;
 }
