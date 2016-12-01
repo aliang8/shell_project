@@ -1,0 +1,6 @@
+a.out
+makefile
+README.md
+shell.c
+text.txt
+> lsls^C

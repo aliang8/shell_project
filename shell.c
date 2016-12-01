@@ -10,6 +10,8 @@ Anthony Liang, Sam Xu, Shaeq Ahmed
 #include <unistd.h>
 #include <readline/readline.h>
 #include <readline/history.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 //function headers for builtin commands
 int cshell_cd(char **args);
@@ -21,6 +23,29 @@ char *cmds[] = {
   "help",
   "exit"
 };
+
+char in [] = "<";
+char out [] = ">";
+
+int infound(char** args){
+  int i = -1;
+  while(args[++i] != NULL){
+    if(strcmp(args[i],in) == 0){
+      return i;
+    }
+  }
+  return -1;
+}
+
+int outfound(char** args){
+  int i = -1;
+  while(args[++i] != NULL){
+    if(strcmp(args[i],out) == 0){
+      return i;
+    }
+  }
+  return -1;
+}
 
 //array of function pointers
 int (*func[])(char**) = {
@@ -166,6 +191,20 @@ int cshell_execute(char **args){
     return 1;
   }
 
+  int in = infound(args);
+  int out = outfound(args);
+
+  if(in != -1){
+    
+  }
+  if(out != -1){
+    int fd1 = creat(args[out+1], 0644);
+    dup2(fd1, STDOUT_FILENO);
+    close(fd1);
+    args[out] = NULL;
+    out = -1;
+  }
+  
   int i = 0;
   for (i; i < num_cmds(); i++){
     if (strcmp(args[0], cmds[i]) == 0){
