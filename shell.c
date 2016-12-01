@@ -8,6 +8,8 @@ Anthony Liang, Sam Xu, Shaeq Ahmed
 #include <string.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <readline/readline.h>
+#include <readline/history.h>
 
 //function headers for builtin commands
 int cshell_cd(char **args);
@@ -35,6 +37,8 @@ int num_cmds(){
    @brief Builtin function implementation
 */
 //cd 
+//implement when cd shell is not a directory
+
 int cshell_cd(char **args){
   if (args[1] == NULL) {
     fprintf(stderr, "cd expects argument");
@@ -176,14 +180,21 @@ int cshell_execute(char **args){
 /**
    @brief Loop for interpreting and executing commands
 */
+
 void cshell_loop(){
   char *line;
   char **args;
   int status;
-
+  
   do {
+    //allows for autocompletion
+    rl_bind_key('\t',rl_complete);
     printf("> ");
-    line = cshell_read_line();
+    //line = cshell_read_line();
+    line = readline(stdin);
+    if(!line)
+      break;
+    add_history(line);
     args = cshell_split_line(line);
     status = cshell_execute(args);
     
@@ -197,7 +208,7 @@ void cshell_loop(){
    @param argc Argument count
    @param argv Argument array of pointers
 */
-int main(int argc, char **argv) {  
+int main(int argc, char **argv) { 
   cshell_loop();
   return EXIT_SUCCESS;
 }
