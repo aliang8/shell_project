@@ -22,7 +22,7 @@ Anthony Liang, Sam Xu, Shaeq Ahmed
 #define BLU   "\033[01;34m"
 #define RESET "\x1B[0m"
 
-#define MAXTOKEN 256 //max tokens
+#define MAXTOKEN 128 //max tokens
 #define MAXLINE 1024 //max characters
 
 //function headers for builtin commands
@@ -30,6 +30,9 @@ int cshell_cd(char **args);
 int cshell_help(char **args);
 int cshell_exit(char **args);
 
+/**
+   @brief Prints a few pretty lines when u start the program
+*/
 void introScreen(){
   printf("\n\t===============================\n");
   printf("\t            C Shell \n");
@@ -57,13 +60,6 @@ int outfound(char** args){
   return -1;
 }
 
-
-//array of function pointers
-int (*func[])(char**) = {
-  &cshell_cd,
-  &cshell_exit
-};
-
 //returns the number of commands
 int num_cmds(){
   return sizeof(cmds) / sizeof(char *);
@@ -84,11 +80,6 @@ int cshell_cd(char **args){
   }
 }
 
-//exit
-int cshell_exit(char **args){
-  //cshell_loop is terminated when status is 0
-  return 0;
-}
 
 //Easier implementation of reading input dynamically
 char *cshell_read_line(){
@@ -135,71 +126,44 @@ char **cshell_split_line(char *line){
 }
 
 /**
-   @brief Run program and wait for it to terminate
-   @param args from cshell_split_line
-   @return Always return 1 to continue execution
-*/
-int cshell_run(char **args){
-  pid_t pid, wpid;
-  int status;
-  
-  pid = fork();
-  
-  //Child process
-  if (pid == 0){
-    if (execvp(args[0],args) == -1){
-      perror("Failed to execute commands");
-    }
-    exit(EXIT_FAILURE);
-  } else {
-    //Parent process
-    do {
-      //Waits for child process to finish
-      wpid = waitpid(pid, &status, WUNTRACED);
-    } while (!WIFEXITED(status) && !WIFSIGNALED(status));
-    //WIFEXITED checks if child process terminated normally
-    //WIFSIGNALED checks if child process terminated by signal
-  }
-  return 1;
-}
-
-/**
    @brief Execute commands if is implemented
 */
 int cshell_execute(char **args){
-  if (args[0] == NULL){
-    //empty command was entered
-    return 1;
-  }
+  int i = 0;
+  int j = 0;
 
-  int in = infound(args);
-  int out = outfound(args);
+  int fileDesc;
+  int stdOUT;
 
-  if(in != -1){
-    int fd0 = open(args[out-1], O_RDONLY, 0);
-    dup2(fd0, STDIN_FILENO);
-    close(fd0);
-    args[in] = 0;
-    args += in+1;
-    in = 0;
-  }
-  if(out != -1){
-    int fd1 = creat(args[out+1], 0644);
-    dup2(fd1, STDOUT_FILENO);
-    close(fd1);
-    args[out] = NULL;
-    out = 0;
+  int temp;
+  int backg = 0;
+
+  char *arg_temp[128];
+
+  //Looking for special characters and stores it in a seperate array
+  while(args[j]!=NULL){
+    if((strcmp(args[j],out)== 0)||(strcmp(args[j],in)== 0)||(strcmp(args[j],"amp")== 0)){
+      break;
+    }
+    args_temp[j] = args[j];
+    j++;
   }
   
-  int i = 0;
-  for (i; i < num_cmds(); i++){
-    if (strcmp(args[0], cmds[i]) == 0){
-      //if command is valid
-      return (*func[i])(args);
+  if(strcmp(args[0],cmds[1])==0){
+    exit(0);
+  }else if(strcmp(args[0],cmds[0])==0){
+    cshell_cd(args);
+  }else{
+    while(args[i]!= NULL & background == 0){
+      if (strcmp(args[i],amp) == 0){
+	background = 1;
+      }else if(strcmp(args[i],"|")==0){
+	pipeHandler(args);
+	return 1;
+      }
     }
   }
-  //if not builtin command
-  return cshell_run(args);
+  
 }
 
 /**
@@ -276,6 +240,8 @@ char* makeprompt(){
 /*     free(prompt); */
 /*   } while (status); */
 /* } */
+
+
 void signalHandler_int(int i){
   if(kill(pid,SIGTERM) == 0) {
     printf("\nprocessing %d a SIGINT signal\n", pid);
@@ -291,9 +257,6 @@ void signalHandler_child(int i){
   }
 }
 
-void printShellP(){
-  char name[1024] = "";
-}
 
 /**
    @brief Making sure the subshell is not running as a foreground job. 
@@ -302,7 +265,6 @@ void printShellP(){
    *We used the approach explained here to set things up
    *www.gnu.org/software/libc/manual/html_node/Initializing-the-Shell.html
 */
-
 void initialize(){
   SH_PID = getpid();
   SH_IS_INTERACTIVE = isatty(STDIN_FILENO); //safety
@@ -336,6 +298,7 @@ void initialize(){
   
 }
 
+
 /**
    @brief Loop for shell 
    @param argc Argument count
@@ -352,6 +315,22 @@ int main(int argc, char **argv) {
 
   initialize();
   introScreen();
+
+  while(1){
+    if(no_reprint == 0){
+      memset(line, '\0', MAXLINE); //emptys and resets line
+      fgets(line, MAXLINE, stdin); //gets user input
+      if((tokens[0] = strtok(line," \n\t")) != NULL){
+	numTokens = 1;
+	//counts the num of tokens
+	while((tokens[numTokens] = strtok(NULL, " \n\t") != NULL)){
+	  numTokens++;
+	}
+	cshell_run(tokens);
+      }
+    }
+  }
   
-  return EXIT_SUCCESS;
+  
+  exit(0);
 }

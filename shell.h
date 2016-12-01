@@ -13,12 +13,12 @@ void signalHandler_int(int p);
 
 char *cmds[] = {
   "cd",
-  "help",
   "exit"
 };
 
 char in [] = "<";
 char out [] = ">";
+char amp [] = "&";
 
 static pid_t SH_PID;
 static pid_t SH_PGID;
