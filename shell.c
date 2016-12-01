@@ -188,10 +188,10 @@ void cshell_loop(){
   
   do {
     //allows for autocompletion
-    rl_bind_key('\t',rl_complete);
-    printf("> ");
+    //rl_bind_key('\t',rl_complete);
+    //printf("> ");
     //line = cshell_read_line();
-    line = readline(stdin);
+    line = readline("> ");
     if(!line)
       break;
     add_history(line);
