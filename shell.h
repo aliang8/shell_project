@@ -11,6 +11,15 @@ void signalHandler_child(int p);
 //SIGINT
 void signalHandler_int(int p);
 
+char *cmds[] = {
+  "cd",
+  "help",
+  "exit"
+};
+
+char in [] = "<";
+char out [] = ">";
+
 static pid_t SH_PID;
 static pid_t SH_PGID;
 static int SH_IS_INTERACTIVE;

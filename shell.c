@@ -30,14 +30,12 @@ int cshell_cd(char **args);
 int cshell_help(char **args);
 int cshell_exit(char **args);
 
-char *cmds[] = {
-  "cd",
-  "help",
-  "exit"
-};
-
-char in [] = "<";
-char out [] = ">";
+void introScreen(){
+  printf("\n\t===============================\n");
+  printf("\t            C Shell \n");
+  printf("\t By Sam Xu, Anthony Liang, & Shaeq Ahmed \n");
+  printf("\n\t===============================\n\n\n");
+}
 
 int infound(char** args){
   int i = -1;
@@ -293,6 +291,10 @@ void signalHandler_child(int i){
   }
 }
 
+void printShellP(){
+  char name[1024] = "";
+}
+
 /**
    @brief Making sure the subshell is not running as a foreground job. 
    *Initialize the pid of the subshell so it could support job control
@@ -349,6 +351,7 @@ int main(int argc, char **argv) {
   pid = -1337; //impossible pid
 
   initialize();
+  introScreen();
   
   return EXIT_SUCCESS;
 }
