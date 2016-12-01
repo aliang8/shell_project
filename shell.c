@@ -12,6 +12,12 @@ Anthony Liang, Sam Xu, Shaeq Ahmed
 #include <readline/history.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <sys/types.h>
+#include <pwd.h>
+
+#define GRN   "\033[01;32m"
+#define BLU   "\033[01;34m"
+#define RESET "\x1B[0m"
 
 //function headers for builtin commands
 int cshell_cd(char **args);
@@ -220,17 +226,65 @@ int cshell_execute(char **args){
    @brief Loop for interpreting and executing commands
 */
 
+char* makeprompt(){
+
+  //make the struct
+  struct passwd *userdata = getpwuid( geteuid());
+  //get the username
+  char *username = (char *) malloc( 33 );
+  strcpy(username, userdata->pw_name);
+  //get the hostname
+  char *hostname = (char *) malloc( 65 );
+  gethostname(hostname, 64);
+  //get and format cwd (replace with ~ for $HOME)
+  int size = 1;
+  char *cwd = (char *) malloc(size * sizeof(char));
+  while (! getcwd(cwd, size) )
+  {
+    size++;
+    cwd = (char *) realloc( cwd, size * sizeof(char) );
+  }
+  char *check_home_dir = strstr(cwd, userdata->pw_dir);
+  char *end_part;
+
+  if (! check_home_dir)
+    end_part = 0;
+  else
+    end_part = check_home_dir + strlen(userdata->pw_dir);
+
+  char *return_cwd = 0;
+
+  if (! end_part)
+    return_cwd = cwd;
+  else
+  {
+    return_cwd = malloc( size + strlen(end_part)+1);
+    strcpy(return_cwd, "~");
+    strcat(return_cwd, end_part);
+  }
+
+
+  char* ret = malloc(strlen(return_cwd)+100);
+  sprintf(ret,GRN"%s@%s"RESET":"BLU"%s"RESET"$ ", username, hostname, return_cwd); //ayy colorful prompt
+
+  free(hostname);
+  free(username);
+  free(cwd);
+  free(return_cwd);
+  return ret;
+}
+
 void cshell_loop(){
   char *line;
   char **args;
   int status;
-  
   do {
     //allows for autocompletion
     //rl_bind_key('\t',rl_complete);
     //printf("> ");
     //line = cshell_read_line();
-    line = readline("> ");
+    char* prompt = makeprompt();
+    line = readline(prompt);
     if(!line)
       break;
     add_history(line);
@@ -239,6 +293,7 @@ void cshell_loop(){
     
     free(line);
     free(args);
+    free(prompt);
   } while (status);
 }
 
