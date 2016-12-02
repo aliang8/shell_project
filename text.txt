@@ -1,0 +1,7 @@
+total 44
+-rwxr-xr-x 1 anthony.liang student 19582 Dec  2 14:41 a.out
+-rw-r--r-- 1 anthony.liang student    92 Dec  2 10:54 makefile
+-rw-r--r-- 1 anthony.liang student   341 Dec  2 10:27 README.md
+-rw-r--r-- 1 anthony.liang student 10614 Dec  2 14:41 shell.c
+-rw-r--r-- 1 anthony.liang student   713 Dec  2 10:27 shell.h
+-rw------- 1 anthony.liang student     0 Dec  2  2016 text.txt

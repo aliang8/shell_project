@@ -377,7 +377,7 @@ void initialize(){
 //Easier implementation of reading input dynamically
 char *cshell_read_line(){
   char *line = NULL;
-  ssize_t bufsize = 0; // have getline allocate a buffer for us
+  size_t bufsize = 0; // have getline allocate a buffer for us
   getline(&line, &bufsize, stdin);
   return line;
 }
@@ -455,6 +455,7 @@ char **cshell_split_line(char *line)
 int main(int argc, char **argv, char **envp) {  
   char *line;
   char **args;
+  int status;
   
   no_reprint = 0;
   pid = -1337; //unusable pid for default
@@ -464,20 +465,19 @@ int main(int argc, char **argv, char **envp) {
   environ = envp;
   setenv("shell",getcwd(currentDir, 1024),1);
   
-  while(TRUE){
+  do {
     if (no_reprint == 0) shellPrompt();
     no_reprint = 0;
     line = cshell_read_line();
-    
     //line = readline("> ");
     //if(!line)
     //break;
     args = cshell_split_line(line);
-    cshell_run(args);
-    
+    printf("%s-%s",args[0],args[1]);
+    status = cshell_run(args);
     free(line);
     free(args);
-  }
+  } while(status);
   return EXIT_SUCCESS;
 }
 
