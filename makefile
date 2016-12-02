@@ -1,5 +1,5 @@
 compile: shell.c
-	gcc shell.c -L/usr/local/lib -I/usr/local/include -lreadline
+	gcc shell.c  -Wall
 run:
 	./a.out
 clean:

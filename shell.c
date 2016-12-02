@@ -8,8 +8,6 @@ Anthony Liang, Sam Xu, Shaeq Ahmed
 #include <string.h>
 #include <sys/wait.h>
 #include <unistd.h>
-#include <readline/readline.h>
-#include <readline/history.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/types.h>
@@ -21,17 +19,13 @@ Anthony Liang, Sam Xu, Shaeq Ahmed
 #define GRN   "\033[01;32m"
 #define BLU   "\033[01;34m"
 #define RESET "\x1B[0m"
+#define CSHELL_TOKEN_BUFSIZE 128 // max number of tokens for a command
+#define CSHELL_TOKEN_DELIM " \t\r\n\a"
+#define MAXLINE 1024 // max number of characters from user input
 
-#define MAXTOKEN 128 //max tokens
-#define MAXLINE 1024 //max characters
-
-//function headers for builtin commands
-int cshell_cd(char **args);
-int cshell_help(char **args);
-int cshell_exit(char **args);
 
 /**
-   @brief Prints a few pretty lines when u start the program
+ *@brief Prints a few pretty lines when u start the program
 */
 void introScreen(){
   printf("\n\t===============================\n");
@@ -40,223 +34,306 @@ void introScreen(){
   printf("\n\t===============================\n\n\n");
 }
 
-int infound(char** args){
-  int i = -1;
-  while(args[++i] != NULL){
-    if(strcmp(args[i],in) == 0){
-      return i;
-    }
-  }
-  return -1;
-}
 
-int outfound(char** args){
-  int i = -1;
-  while(args[++i] != NULL){
-    if(strcmp(args[i],out) == 0){
-      return i;
-    }
-  }
-  return -1;
-}
-
-//returns the number of commands
-int num_cmds(){
-  return sizeof(cmds) / sizeof(char *);
+/**
+ *Print out the user prompt each line. 
+ */
+void shellPrompt(){
+  char prompt[1204] = "";
+  gethostname(prompt, sizeof(prompt));
+  printf("%s@%s %s > ", getenv("LOGNAME"), prompt, getcwd(currentDir, 1024));
 }
 
 /**
-   @brief Builtin function implementation
-*/
-//cd 
-//implement when cd shell is not a directory
-
-int cshell_cd(char **args){
+ * cd method
+ */
+int cshell_cd(char* args[]){
   if (args[1] == NULL) {
-    fprintf(stderr, "cd expects argument");
-  } else {
-    chdir(args[1]);
+    chdir(getenv("HOME")); 
     return 1;
   }
-}
-
-
-//Easier implementation of reading input dynamically
-char *cshell_read_line(){
-  char *line = NULL;
-  ssize_t bufsize = 0; // have getline allocate a buffer for us
-  getline(&line, &bufsize, stdin);
-  return line;
-}
-
-//Initial buffer size
-#define CSHELL_BUFSIZE 256
-/**
-   @brief Read input from stdin
-   @return Line from stdin
-*/
-
-/**
-   @brief Split line 
-   @param Line read from cshell_read_line
-   @return Array of args
-*/
-//Token size
-#define CSHELL_TOKEN_BUFSIZE 64
-#define CSHELL_TOKEN_DELIM " \t\r\n\a"
-char **cshell_split_line(char *line){
-  int bufsize = CSHELL_TOKEN_BUFSIZE, pos = 0;
-  char **args = malloc(bufsize * sizeof(char*));
-  char *arg;
-
-  arg = strtok(line, CSHELL_TOKEN_DELIM);
-  while (arg != NULL) {
-    args[pos] = arg;
-    pos++;
-
-    if (pos >= bufsize) {
-      bufsize *= 2;
-      args = realloc(args, bufsize * sizeof(char*));
+  else{ 
+    if (chdir(args[1]) == -1) {
+      printf(" %s: no such directory\n", args[1]);
+      return -1;
     }
-
-    arg = strtok(NULL, CSHELL_TOKEN_DELIM);
   }
-  args[pos] = NULL;
-  return args;
+  return 0;
 }
 
 /**
-   @brief Execute commands if is implemented
-*/
-int cshell_execute(char **args){
+ * function responsible for excuting processes, can be in the background
+ * 
+ */ 
+void cshell_exec(char **args, int background){	 
+  int err = -1;
+	 
+  if((pid=fork())==-1){
+    printf("Child process could not be created\n");
+    return;
+  }
+  if(pid==0){
+    signal(SIGINT, SIG_IGN);
+    setenv("parent",getcwd(currentDir, 1024),1);        
+    if (execvp(args[0],args)==err){
+      printf("Command not found");
+      kill(getpid(),SIGTERM);
+    }
+  }
+	 
+  if (background == 0){
+    waitpid(pid,NULL,0);
+  }else{
+    printf("Process created with PID: %d\n",pid);
+  }	 
+}
+ 
+
+void cshell_io(char * args[], char* inputFile, char* outputFile, int option){
+	 
+  int err = -1;
+	
+  int fileDescriptor; // between 0 and 19, describing the output or input file
+	
+  if((pid=fork())==-1){
+    printf("Child process could not be created\n");
+    return;
+  }
+  if(pid==0){
+    if (option == 0){
+      fileDescriptor = open(outputFile, O_CREAT | O_TRUNC | O_WRONLY, 0600); 
+      dup2(fileDescriptor, STDOUT_FILENO); 
+      close(fileDescriptor);
+    }else if (option == 1){
+      fileDescriptor = open(inputFile, O_RDONLY, 0600);  
+      dup2(fileDescriptor, STDIN_FILENO);
+      close(fileDescriptor);
+      fileDescriptor = open(outputFile, O_CREAT | O_TRUNC | O_WRONLY, 0600);
+      dup2(fileDescriptor, STDOUT_FILENO);
+      close(fileDescriptor);		 
+    }
+		 
+    setenv("parent",getcwd(currentDir, 1024),1);
+		
+    if (execvp(args[0],args)==err){
+      printf("err");
+      kill(getpid(),SIGTERM);
+    }		 
+  }
+  waitpid(pid,NULL,0);
+}
+
+
+void cshell_pipeHandle(char * args[]){
+  int filedes[2]; 
+  int filedes2[2];
+	
+  int num_cmds = 0;
+	
+  char *command[256];
+	
+  pid_t pid;
+	
+  int err = -1;
+  int end = 0;
+        
   int i = 0;
   int j = 0;
-
-  int fileDesc;
-  int stdOUT;
-
+  int k = 0;
+  int l = 0;
+        
+  while (args[l] != NULL){
+    if (strcmp(args[l],"|") == 0){
+      num_cmds++;
+    }
+    l++;
+  }
+  num_cmds++;
+        
+  while (args[j] != NULL && end != 1){
+    k = 0;
+    while (strcmp(args[j],"|") != 0){
+      command[k] = args[j];
+      j++;	
+      if (args[j] == NULL){
+	end = 1;
+	k++;
+	break;
+      }
+      k++;
+    }
+    command[k] = NULL;
+    j++;		
+	        
+    if (i % 2 != 0){
+      pipe(filedes);
+    }else{
+      pipe(filedes2); 
+    }
+		
+    pid=fork();
+		
+    if(pid==-1){			
+      if (i != num_cmds - 1){
+	if (i % 2 != 0){
+	  close(filedes[1]);
+	}else{
+	  close(filedes2[1]); 
+	} 
+      }			
+      printf("Child process could not be created\n");
+      return;
+    }
+    if(pid==0){
+      if (i == 0){
+	dup2(filedes2[1], STDOUT_FILENO);
+      }
+      else if (i == num_cmds - 1){
+	if (num_cmds % 2 != 0){ 
+	  dup2(filedes[0],STDIN_FILENO);
+	}else{ 
+	  dup2(filedes2[0],STDIN_FILENO);
+	}
+      }else{
+	if (i % 2 != 0){
+	  dup2(filedes2[0],STDIN_FILENO); 
+	  dup2(filedes[1],STDOUT_FILENO);
+	}else{
+	  dup2(filedes[0],STDIN_FILENO); 
+	  dup2(filedes2[1],STDOUT_FILENO);					
+	} 
+      }
+			
+      if (execvp(command[0],command)==err){
+	kill(getpid(),SIGTERM);
+      }		
+    }
+			        
+    if (i == 0){
+      close(filedes2[1]);
+    }
+    else if (i == num_cmds - 1){
+      if (num_cmds % 2 != 0){					
+	close(filedes[0]);
+      }else{					
+	close(filedes2[0]);
+      }
+    }else{
+      if (i % 2 != 0){					
+	close(filedes2[0]);
+	close(filedes[1]);
+      }else{					
+	close(filedes[0]);
+	close(filedes2[1]);
+      }
+    }
+				
+    waitpid(pid,NULL,0);
+				
+    i++;	
+  }
+}
+			
+/**
+ * Method used to handle the commands entered via the standard input
+ */ 
+int cshell_run(char * args[]){
+  int i = 0;
+  int j = 0;
+	
+  int fileDescriptor;
+  int standardOut;
+	
   int temp;
-  int backg = 0;
-
-  char *arg_temp[128];
-
-  //Looking for special characters and stores it in a seperate array
-  while(args[j]!=NULL){
-    if((strcmp(args[j],out)== 0)||(strcmp(args[j],in)== 0)||(strcmp(args[j],"amp")== 0)){
+  int background = 0;
+	
+  char *args_temp[256];
+        
+  while ( args[j] != NULL){
+    if ( (strcmp(args[j],">") == 0) || (strcmp(args[j],"<") == 0) || (strcmp(args[j],"&") == 0)){
       break;
     }
     args_temp[j] = args[j];
     j++;
   }
-  
-  if(strcmp(args[0],cmds[1])==0){
-    exit(0);
-  }else if(strcmp(args[0],cmds[0])==0){
-    cshell_cd(args);
-  }else{
-    while(args[i]!= NULL & background == 0){
-      if (strcmp(args[i],amp) == 0){
+	
+  // 'exit' command quits the shell
+  if(strcmp(args[0],"exit") == 0) exit(0);
+  // 'pwd' command prints the current directory
+  else if (strcmp(args[0],"pwd") == 0){
+    if (args[j] != NULL){
+      // If we want file output
+      if ( (strcmp(args[j],">") == 0) && (args[j+1] != NULL) ){
+	fileDescriptor = open(args[j+1], O_CREAT | O_TRUNC | O_WRONLY, 0600); 
+	// We replace de standard output with the appropriate file
+	standardOut = dup(STDOUT_FILENO); 	// first we make a copy of stdout
+	// because we'll want it back
+	dup2(fileDescriptor, STDOUT_FILENO); 
+	close(fileDescriptor);
+	printf("%s\n", getcwd(currentDir, 1024));
+	dup2(standardOut, STDOUT_FILENO);
+      }
+    }else{
+      printf("%s\n", getcwd(currentDir, 1024));
+    }
+  } 
+  else if (strcmp(args[0],"cd") == 0) cshell_cd(args);
+  else{
+    while (args[i] != NULL && background == 0){
+      if (strcmp(args[i],"&") == 0){
 	background = 1;
-      }else if(strcmp(args[i],"|")==0){
-	pipeHandler(args);
+      }else if (strcmp(args[i],"|") == 0){
+	cshell_pipeHandle(args);
+	return 1;
+      }else if (strcmp(args[i],"<") == 0){
+	temp = i+1;
+	if (args[temp] == NULL || args[temp+1] == NULL || args[temp+2] == NULL ){
+	  printf("Not enough input arguments\n");
+	  return -1;
+	}else{
+	  if (strcmp(args[temp+1],">") != 0){
+	    printf("Usage: Expected '>' and found %s\n",args[temp+1]);
+	    return -2;
+	  }
+	}
+	cshell_io(args_temp,args[i+1],args[i+3],1);
 	return 1;
       }
+      else if (strcmp(args[i],">") == 0){
+	if (args[i+1] == NULL){
+	  printf("Not enough input arguments\n");
+	  return -1;
+	}
+	cshell_io(args_temp,NULL,args[i+1],0);
+	return 1;
+      }
+      i++;
     }
+    cshell_exec(args_temp,background);
   }
-  
+  return 1;
 }
 
 /**
-   @brief Loop for interpreting and executing commands
-*/
-
-char* makeprompt(){
-
-  //make the struct
-  struct passwd *userdata = getpwuid( geteuid());
-  //get the username
-  char *username = (char *) malloc( 33 );
-  strcpy(username, userdata->pw_name);
-  //get the hostname
-  char *hostname = (char *) malloc( 65 );
-  gethostname(hostname, 64);
-  //get and format cwd (replace with ~ for $HOME)
-  int size = 1;
-  char *cwd = (char *) malloc(size * sizeof(char));
-  while (! getcwd(cwd, size) )
-  {
-    size++;
-    cwd = (char *) realloc( cwd, size * sizeof(char) );
+ *  handler for SIGCHLD
+ */
+void signalHandler_child(int p){
+  while (waitpid(-1, NULL, WNOHANG) > 0) {
   }
-  char *check_home_dir = strstr(cwd, userdata->pw_dir);
-  char *end_part;
-
-  if (! check_home_dir)
-    end_part = 0;
-  else
-    end_part = check_home_dir + strlen(userdata->pw_dir);
-
-  char *return_cwd = 0;
-
-  if (! end_part)
-    return_cwd = cwd;
-  else
-  {
-    return_cwd = malloc( size + strlen(end_part)+1);
-    strcpy(return_cwd, "~");
-    strcat(return_cwd, end_part);
-  }
-
-
-  char* ret = malloc(strlen(return_cwd)+100);
-  sprintf(ret,GRN"%s@%s"RESET":"BLU"%s"RESET"$ ", username, hostname, return_cwd); //ayy colorful prompt
-
-  free(hostname);
-  free(username);
-  free(cwd);
-  free(return_cwd);
-  return ret;
+  printf("\n");
 }
 
-/* void cshell_loop(){ */
-/*   char *line; */
-/*   char **args; */
-/*   int status; */
-/*   do { */
-/*     //allows for autocompletion */
-/*     //rl_bind_key('\t',rl_complete); */
-/*     //printf("> "); */
-/*     //line = cshell_read_line(); */
-/*     char* prompt = makeprompt(); */
-/*     line = readline(prompt); */
-/*     if(!line) */
-/*       break; */
-/*     add_history(line); */
-/*     args = cshell_split_line(line); */
-/*     status = cshell_execute(args); */
-    
-/*     free(line); */
-/*     free(args); */
-/*     free(prompt); */
-/*   } while (status); */
-/* } */
-
-
-void signalHandler_int(int i){
-  if(kill(pid,SIGTERM) == 0) {
-    printf("\nprocessing %d a SIGINT signal\n", pid);
-    no_reprint = 1;
+/**
+ *  handler for SIGINT
+ */
+void signalHandler_int(int p){
+  if (kill(pid,SIGTERM) == 0){
+    printf("\nprocess %d received SIGINT\n",pid);
+    no_reprint = 1;			
   }else{
     printf("\n");
   }
 }
-
-void signalHandler_child(int i){
-  while(waitpid(-1, NULL, WNOHANG) > 0){
-    printf("\n");
-  }
-}
-
 
 /**
    @brief Making sure the subshell is not running as a foreground job. 
@@ -264,7 +341,7 @@ void signalHandler_child(int i){
    *Post initialization allows the sub-shell to have its own child processes
    *We used the approach explained here to set things up
    *www.gnu.org/software/libc/manual/html_node/Initializing-the-Shell.html
-*/
+   */
 void initialize(){
   SH_PID = getpid();
   SH_IS_INTERACTIVE = isatty(STDIN_FILENO); //safety
@@ -298,39 +375,39 @@ void initialize(){
   
 }
 
+/**
+   @brief Split line 
+   @param Line read from cshell_read_line
+   @return Array of args
+*/
+
 
 /**
-   @brief Loop for shell 
-   @param argc Argument count
-   @param argv Argument array of pointers
-*/
-int main(int argc, char **argv) {
-  char line[MAXLINE];
-  char *tokens[MAXTOKEN];
+ * Main method of our shell
+ */ 
+int main(int argc, char *argv[], char ** envp) {
+  char line[MAXLINE]; 
+  char * tokens [CSHELL_TOKEN_BUFSIZE]; 
   int numTokens;
-
-  no_reprint = 0; //prevent reprint in certain cases
-
-  pid = -1337; //impossible pid
-
+  
+  no_reprint = 0; 
+  pid = -1337; //unusable pid for default 
   initialize();
   introScreen();
-
-  while(1){
-    if(no_reprint == 0){
-      memset(line, '\0', MAXLINE); //emptys and resets line
-      fgets(line, MAXLINE, stdin); //gets user input
-      if((tokens[0] = strtok(line," \n\t")) != NULL){
-	numTokens = 1;
-	//counts the num of tokens
-	while((tokens[numTokens] = strtok(NULL, " \n\t") != NULL)){
-	  numTokens++;
-	}
-	cshell_run(tokens);
-      }
+ 
+  environ = envp;
+  setenv("shell",getcwd(currentDir, 1024),1);
+  while(TRUE){
+    if (no_reprint == 0) shellPrompt();
+    no_reprint = 0;
+    memset ( line, '\0', MAXLINE );
+    fgets(line, MAXLINE, stdin);
+    if((tokens[0] = strtok(line," \n\t")) != NULL){
+      numTokens = 1;
+      while((tokens[numTokens] = strtok(NULL, CSHELL_TOKEN_DELIM)) != NULL) numTokens++;
+      cshell_run(tokens);
     }
-  }
-  
-  
+  }          
+
   exit(0);
 }

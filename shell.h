@@ -4,8 +4,8 @@ Systems
 Anthony Liang, Sam Xu, Shaeq Ahmed								   
 *******************************************************************************/
 
-/* SIGNAL HANDLER IMLPEMENTATION */
-//SIGCHILD
+#define TRUE 1
+#define FALSE !TRUE
 
 void signalHandler_child(int p);
 //SIGINT
@@ -34,3 +34,5 @@ struct sigaction act_int;
 int no_reprint; 
 
 pid_t pid;
+
+int changeDirectory(char * args[]);
