@@ -1,7 +1,7 @@
 compile: shell.c
-	gcc shell.c -Wall
+	gcc shell.c -Wall -L/usr/local/lib -I/usr/local/include -lreadline
 run:
-	gcc shell.c -Wall ./a.out
+	./a.out
 clean:
 	rm *~
 	rm a.out

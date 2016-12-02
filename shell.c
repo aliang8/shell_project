@@ -17,6 +17,8 @@ Anthony Liang, Sam Xu, Shaeq Ahmed
 #include "shell.h"
 #include <termios.h>
 #include <signal.h>
+#include <readline/readline.h>
+#include <readline/history.h>
 
 #define GRN   "\033[01;32m"
 #define BLU   "\033[01;34m"
@@ -468,12 +470,12 @@ int main(int argc, char **argv, char **envp) {
   do {
     if (no_reprint == 0) shellPrompt();
     no_reprint = 0;
-    line = cshell_read_line();
-    //line = readline("> ");
-    //if(!line)
-    //break;
+    //line = cshell_read_line();
+    line = readline("");
+    if(!line)
+      break;
+    add_history(line);
     args = cshell_split_line(line);
-    printf("%s-%s",args[0],args[1]);
     status = cshell_run(args);
     free(line);
     free(args);
