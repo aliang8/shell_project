@@ -3,6 +3,8 @@ CShell Project
 Systems 
 Anthony Liang, Sam Xu, Shaeq Ahmed								   
 *******************************************************************************/
+//colors, weird spacing, dynamic, parsing ;, fix ls, add ~, readline, history
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -19,10 +21,6 @@ Anthony Liang, Sam Xu, Shaeq Ahmed
 #define GRN   "\033[01;32m"
 #define BLU   "\033[01;34m"
 #define RESET "\x1B[0m"
-#define CSHELL_TOKEN_BUFSIZE 128 // max number of tokens for a command
-#define CSHELL_TOKEN_DELIM " \t\r\n\a"
-#define MAXLINE 1024 // max number of characters from user input
-
 
 /**
  *@brief Prints a few pretty lines when u start the program
@@ -376,39 +374,112 @@ void initialize(){
   
 }
 
+//Easier implementation of reading input dynamically
+char *cshell_read_line(){
+  char *line = NULL;
+  ssize_t bufsize = 0; // have getline allocate a buffer for us
+  getline(&line, &bufsize, stdin);
+  return line;
+}
+
+//Initial buffer size
+#define CSHELL_BUFSIZE 256
+/**
+   @brief Read input from stdin
+   @return Line from stdin
+*/
+/*
+char *cshell_read_line(){
+  int bufsize = CSHELL_BUFSIZE;
+  int pos = 0;
+  char *line = malloc(sizeof(char)* bufsize);
+  char c;
+
+  while(1){
+    //Reads in a character
+    c = getchar();
+    
+    //If we hit EOF, replace it with null and return
+    if (c == EOF || c == '\n'){
+      line[pos] = '\0';
+      return line;
+    } else {
+      line[pos] = c;
+    }
+    pos++;
+
+    //If we exceed the buffer size, dynamically reallocate memory.
+    if (pos > bufsize){
+      bufsize += CSHELL_BUFSIZE;
+      line = realloc(line, bufsize);
+    }
+  }
+}
+*/
+
+//Token size
 /**
    @brief Split line 
    @param Line read from cshell_read_line
    @return Array of args
 */
+#define CSHELL_TOKEN_BUFSIZE 64
+#define CSHELL_TOKEN_DELIM " \t\r\n\a"
+char **cshell_split_line(char *line)
+{
+  int bufsize = CSHELL_TOKEN_BUFSIZE, pos = 0;
+  char **args = malloc(bufsize * sizeof(char*));
+  char *arg;
 
+  arg = strtok(line, CSHELL_TOKEN_DELIM);
+  while (arg != NULL) {
+    args[pos] = arg;
+    pos++;
+
+    if (pos >= bufsize) {
+      bufsize *= 2;
+      args = realloc(args, bufsize * sizeof(char*));
+    }
+
+    arg = strtok(NULL, CSHELL_TOKEN_DELIM);
+  }
+  args[pos] = NULL;
+  return args;
+}
 
 /**
- * Main method of our shell
- */ 
-int main(int argc, char *argv[], char ** envp) {
-  char line[MAXLINE]; 
-  char * tokens [CSHELL_TOKEN_BUFSIZE]; 
-  int numTokens;
+   @brief Loop for shell 
+   @param argc Argument count
+   @param argv Argument array of pointers
+*/
+int main(int argc, char **argv, char **envp) {  
+  char *line;
+  char **args;
   
-  no_reprint = 0; 
-  pid = -1337; //unusable pid for default 
+  no_reprint = 0;
+  pid = -1337; //unusable pid for default
   initialize();
   introScreen();
  
   environ = envp;
   setenv("shell",getcwd(currentDir, 1024),1);
+  
   while(TRUE){
     if (no_reprint == 0) shellPrompt();
     no_reprint = 0;
-    memset ( line, '\0', MAXLINE );
-    fgets(line, MAXLINE, stdin);
-    if((tokens[0] = strtok(line," \n\t")) != NULL){
-      numTokens = 1;
-      while((tokens[numTokens] = strtok(NULL, CSHELL_TOKEN_DELIM)) != NULL) numTokens++;
-      cshell_run(tokens);
-    }
-  }          
-
-  exit(0);
+    line = cshell_read_line();
+    
+    //line = readline("> ");
+    //if(!line)
+    //break;
+    args = cshell_split_line(line);
+    cshell_run(args);
+    
+    free(line);
+    free(args);
+  }
+  return EXIT_SUCCESS;
 }
+
+  
+  
