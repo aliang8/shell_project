@@ -1,7 +1,7 @@
 compile: shell.c
 	gcc shell.c  -Wall
 run:
-	./a.out
+	gcc shell.c  -Wall ./a.out
 clean:
 	rm *~
 	rm a.out

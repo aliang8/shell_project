@@ -259,6 +259,7 @@ int cshell_run(char * args[]){
 	
   // 'exit' command quits the shell
   if(strcmp(args[0],"exit") == 0) exit(0);
+  else if (strcmp(args[0],"clear") == 0) system("clear");
   // 'pwd' command prints the current directory
   else if (strcmp(args[0],"pwd") == 0){
     if (args[j] != NULL){
