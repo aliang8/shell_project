@@ -62,7 +62,7 @@ void shellPrompt(){
     strcat(return_cwd, tail);
   }
 
-  printf(GRN"%s@%s"RESET":"BLU"%s"RESET"$ ", getenv("LOGNAME"), prompt, return_cwd);
+  printf(GRN"%s@%s"RESET":"BLU"%s"RESET"$", getenv("LOGNAME"), prompt, return_cwd);
 
 }
 
@@ -501,7 +501,7 @@ int main(int argc, char **argv) {
   do {
     if (no_reprint == 0) shellPrompt();
     no_reprint = 0;
-    line = readline("");
+    line = readline(" ");
     if(!is_empty(line)){
       add_history(line);
       cmds = parse_semicolon(line);
