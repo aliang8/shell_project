@@ -3,7 +3,7 @@ CShell Project
 Systems 
 Anthony Liang, Sam Xu, Shaeq Ahmed								   
 *******************************************************************************/
-//colors, weird spacing, dynamic, parsing ;, fix ls, add ~, readline, history
+//colors, parsing ;, fix ls, add ~
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -427,13 +427,14 @@ char *cshell_read_line(){
 */
 #define CSHELL_TOKEN_BUFSIZE 64
 #define CSHELL_TOKEN_DELIM " \t\r\n\a"
-char **cshell_split_line(char *line)
+#define SEMICOLON_DELIM ";"
+char **cshell_split_line(char *line, char *delim)
 {
   int bufsize = CSHELL_TOKEN_BUFSIZE, pos = 0;
   char **args = malloc(bufsize * sizeof(char*));
   char *arg;
 
-  arg = strtok(line, CSHELL_TOKEN_DELIM);
+  arg = strtok(line, delim);
   while (arg != NULL) {
     args[pos] = arg;
     pos++;
@@ -443,9 +444,15 @@ char **cshell_split_line(char *line)
       args = realloc(args, bufsize * sizeof(char*));
     }
 
-    arg = strtok(NULL, CSHELL_TOKEN_DELIM);
+    arg = strtok(NULL, delim);
   }
   args[pos] = NULL;
+  return args;
+}
+
+char **parse_semicolon(char *line) {
+  char **args;
+  args = cshell_split_line(line, SEMICOLON_DELIM);
   return args;
 }
 
@@ -457,6 +464,7 @@ char **cshell_split_line(char *line)
 int main(int argc, char **argv, char **envp) {  
   char *line;
   char **args;
+  char **cmds;
   int status;
   
   no_reprint = 0;
@@ -475,10 +483,16 @@ int main(int argc, char **argv, char **envp) {
     if(!line)
       break;
     add_history(line);
-    args = cshell_split_line(line);
-    status = cshell_run(args);
-    free(line);
-    free(args);
+    cmds = parse_semicolon(line);
+    int i;
+    /*
+    for(i = 0; i <= (sizeof(cmds) / sizeof(char*)); i++){
+      args = cshell_split_line(cmds[i], CSHELL_TOKEN_DELIM);
+      status = cshell_run(args);
+      free(line);
+      free(args);
+    }
+    */
   } while(status);
   return EXIT_SUCCESS;
 }
