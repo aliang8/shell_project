@@ -39,9 +39,30 @@ void introScreen(){
  *Print out the user prompt each line. 
  */
 void shellPrompt(){
+  struct passwd* userdata = getpwuid( geteuid());
   char prompt[1204] = "";
   gethostname(prompt, sizeof(prompt));
-  printf("%s@%s %s > ", getenv("LOGNAME"), prompt, getcwd(currentDir, 1024));
+  char* cwd;
+  char buff[1024];
+  cwd = getcwd( buff, 1024);
+  char *checkhome = strstr(cwd, userdata->pw_dir);
+  char *tail;
+  if (!checkhome)
+    tail = 0;
+  else
+    tail = checkhome + strlen(userdata->pw_dir);
+  char return_cwd [] = "";
+  
+  if (!tail) {
+    strcpy(return_cwd, cwd);
+  }
+  else {
+    strcpy(return_cwd, "~");
+    strcat(return_cwd, tail);
+  }
+
+  printf(GRN"%s@%s"RESET":"BLU"%s"RESET"$ ", getenv("LOGNAME"), prompt, return_cwd);
+
 }
 
 /**
@@ -67,7 +88,12 @@ int cshell_cd(char* args[]){
  */ 
 void cshell_exec(char **args, int background){	 
   int err = -1;
-	 
+  /* int i; */
+  /* for(i = 0; args[i] != NULL; i++) */
+  /*   { */
+  /*     printf("%s,\t", args[i]); */
+  /*   } */
+  printf("\n");
   if((pid=fork())==-1){
     printf("Child process could not be created\n");
     return;
@@ -137,10 +163,7 @@ void cshell_pipeHandle(char * args[]){
   int err = -1;
   int end = 0;
         
-  int i = 0;
-  int j = 0;
-  int k = 0;
-  int l = 0;
+  int i, j, k, l = 0;
         
   while (args[l] != NULL){
     if (strcmp(args[l],"|") == 0){
@@ -238,6 +261,8 @@ void cshell_pipeHandle(char * args[]){
  * Method used to handle the commands entered via the standard input
  */ 
 int cshell_run(char * args[]){
+
+
   int i = 0;
   int j = 0;
 	
@@ -256,6 +281,7 @@ int cshell_run(char * args[]){
     args_temp[j] = args[j];
     j++;
   }
+  args_temp[j] = NULL;
 	
   // 'exit' command quits the shell
   if(strcmp(args[0],"exit") == 0) exit(0);
@@ -310,6 +336,7 @@ int cshell_run(char * args[]){
       }
       i++;
     }
+
     cshell_exec(args_temp,background);
   }
   return 1;
@@ -434,6 +461,17 @@ char **cshell_split_line(char *line, char *delim)
   char **args = malloc(bufsize * sizeof(char*));
   char *arg;
 
+  /* printf("spliting line:%s \n",line); */
+  /* if((args[0] = strtok(line, delim)) != NULL){ */
+  /*   while((args[pos] = strtok(NULL, delim)) != NULL){ */
+  /*     pos++; */
+  /*     if (pos >= bufsize){ */
+  /* 	bufsize *= 2; */
+  /* 	args = realloc(args, bufsize * sizeof(char*)); */
+  /*     } */
+  /*   } */
+  /* } */
+  
   arg = strtok(line, delim);
   while (arg != NULL) {
     args[pos] = arg;
@@ -446,6 +484,7 @@ char **cshell_split_line(char *line, char *delim)
 
     arg = strtok(NULL, delim);
   }
+  //printf("pos num: %d\n",pos);
   args[pos] = NULL;
   return args;
 }
@@ -454,6 +493,15 @@ char **parse_semicolon(char *line) {
   char **args;
   args = cshell_split_line(line, SEMICOLON_DELIM);
   return args;
+}
+
+int is_empty(const char *s) {
+  while (*s != '\0') {
+    if (!isspace(*s))
+      return 0;
+    s++;
+  }
+  return 1;
 }
 
 /**
@@ -480,19 +528,30 @@ int main(int argc, char **argv, char **envp) {
     no_reprint = 0;
     //line = cshell_read_line();
     line = readline("");
-    if(!line)
-      break;
-    add_history(line);
-    cmds = parse_semicolon(line);    
-    int i;
-    for(i = 0; cmds[i] != NULL; i++) {
-      printf("%i\n",i);
-      args = cshell_split_line(cmds[i], CSHELL_TOKEN_DELIM);
-      status = cshell_run(args);
+    if(!is_empty(line)){
+      add_history(line);
+      cmds = parse_semicolon(line);
+      /* int j; */
+      /* for(j = 0; cmds[j] != NULL; j++) */
+      /*   { */
+      /* 	printf("%s,\t", cmds[j]); */
+      /*   } */
+      /* printf("\n"); */
+      int i;
+      for(i = 0; cmds[i] != NULL; i++) {
+	args = cshell_split_line(cmds[i], CSHELL_TOKEN_DELIM);
+	/* int k; */
+	/* for(k = 0; args[k] != NULL; k++) */
+	/*   { */
+	/* 	  printf("%s,\t", args[k]); */
+	/*   } */
+	/* printf("\n"); */
+	status = cshell_run(args);
+	/* printf("sec part: %s\n",cmds[1]); */
+      }
       free(line);
       free(args);
     }
-    
   } while(status);
   return EXIT_SUCCESS;
 }
