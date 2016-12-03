@@ -452,7 +452,6 @@ char **cshell_split_line(char *line, char *delim)
 
     arg = strtok(NULL, delim);
   }
-  //printf("pos num: %d\n",pos);
   args[pos] = NULL;
   return args;
 }
