@@ -3,7 +3,7 @@ CShell Project
 Systems 
 Anthony Liang, Sam Xu, Shaeq Ahmed								   
 *******************************************************************************/
-//colors, parsing ;, fix ls, add ~
+
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -20,6 +20,7 @@ Anthony Liang, Sam Xu, Shaeq Ahmed
 #include <readline/readline.h>
 #include <readline/history.h>
 
+//Color codes
 #define GRN   "\033[01;32m"
 #define BLU   "\033[01;34m"
 #define RESET "\x1B[0m"
@@ -36,7 +37,7 @@ void introScreen(){
 
 
 /**
- *Print out the user prompt each line. 
+ *@brief Prints out the user prompt in linux format, added custom COLORS to make it more aesthetic!
  */
 void shellPrompt(){
   struct passwd* userdata = getpwuid( geteuid());
@@ -66,7 +67,9 @@ void shellPrompt(){
 }
 
 /**
- * cd method
+ *@brief cd method
+ *@param args -  the array  of arguments, directories in this case
+ *@return each value reports the sucess rate of the arguments
  */
 int cshell_cd(char* args[]){
   if (args[1] == NULL) {
@@ -83,16 +86,12 @@ int cshell_cd(char* args[]){
 }
 
 /**
- * function responsible for excuting processes, can be in the background
- * 
+ *@brief function responsible for excuting processes
+ *@param args - the array of strings as arguments
+ *@param background - checks whether a background process is occuring
  */ 
 void cshell_exec(char **args, int background){	 
   int err = -1;
-  /* int i; */
-  /* for(i = 0; args[i] != NULL; i++) */
-  /*   { */
-  /*     printf("%s,\t", args[i]); */
-  /*   } */
   printf("\n");
   if((pid=fork())==-1){
     printf("Child process could not be created\n");
@@ -114,7 +113,13 @@ void cshell_exec(char **args, int background){
   }	 
 }
  
-
+/**
+ *@brief this is a helper function that helps control the writing and reading of files
+ *@param args - the array of strings as arguments
+ *@param inputfile - name of the input file
+ *@param outputfile - name of the output file
+ *@param option - controls whether we are writing or reading, > or <
+ */ 
 void cshell_io(char * args[], char* inputFile, char* outputFile, int option){
 	 
   int err = -1;
@@ -149,7 +154,10 @@ void cshell_io(char * args[], char* inputFile, char* outputFile, int option){
   waitpid(pid,NULL,0);
 }
 
-
+/**
+ *@brief helper function responsible for the helper 
+ *@param args - a list of arguments
+ */ 
 void cshell_pipeHandle(char * args[]){
   int filedes[2]; 
   int filedes2[2];
@@ -258,7 +266,8 @@ void cshell_pipeHandle(char * args[]){
 }
 			
 /**
- * Method used to handle the commands entered via the standard input
+ *@brief Method used to handle the commands entered via the standard input
+ *@param args - a list of arguments taken directly from the main loop
  */ 
 int cshell_run(char * args[]){
 
@@ -398,12 +407,14 @@ void initialize(){
     //sets and controls the terminal with the shell
     tcsetpgrp(STDIN_FILENO, SH_PGID);
     tcgetattr(STDIN_FILENO, &SH_TMODES);
-
   }
-  
 }
 
-//Easier implementation of reading input dynamically
+
+/**
+   @brief Easier implementation of reading input dynamically
+   @return a line of string imported from user input / stdin
+*/
 char *cshell_read_line(){
   char *line = NULL;
   size_t bufsize = 0; // have getline allocate a buffer for us
@@ -413,44 +424,12 @@ char *cshell_read_line(){
 
 //Initial buffer size
 #define CSHELL_BUFSIZE 256
+
+
 /**
-   @brief Read input from stdin
-   @return Line from stdin
-*/
-/*
-char *cshell_read_line(){
-  int bufsize = CSHELL_BUFSIZE;
-  int pos = 0;
-  char *line = malloc(sizeof(char)* bufsize);
-  char c;
-
-  while(1){
-    //Reads in a character
-    c = getchar();
-    
-    //If we hit EOF, replace it with null and return
-    if (c == EOF || c == '\n'){
-      line[pos] = '\0';
-      return line;
-    } else {
-      line[pos] = c;
-    }
-    pos++;
-
-    //If we exceed the buffer size, dynamically reallocate memory.
-    if (pos > bufsize){
-      bufsize += CSHELL_BUFSIZE;
-      line = realloc(line, bufsize);
-    }
-  }
-}
-*/
-
-//Token size
-/**
-   @brief Split line 
-   @param Line read from cshell_read_line
-   @return Array of args
+ @brief Split line 
+ @param Line read from cshell_read_line
+ @return Array of args
 */
 #define CSHELL_TOKEN_BUFSIZE 64
 #define CSHELL_TOKEN_DELIM " \t\r\n\a"
@@ -461,17 +440,6 @@ char **cshell_split_line(char *line, char *delim)
   char **args = malloc(bufsize * sizeof(char*));
   char *arg;
 
-  /* printf("spliting line:%s \n",line); */
-  /* if((args[0] = strtok(line, delim)) != NULL){ */
-  /*   while((args[pos] = strtok(NULL, delim)) != NULL){ */
-  /*     pos++; */
-  /*     if (pos >= bufsize){ */
-  /* 	bufsize *= 2; */
-  /* 	args = realloc(args, bufsize * sizeof(char*)); */
-  /*     } */
-  /*   } */
-  /* } */
-  
   arg = strtok(line, delim);
   while (arg != NULL) {
     args[pos] = arg;
@@ -489,12 +457,22 @@ char **cshell_split_line(char *line, char *delim)
   return args;
 }
 
+/**
+   @brief Parses multiple commands with ';'
+   @param Line read from cshell_read_line
+   @return Array of args, with ; as the delimiter
+*/
 char **parse_semicolon(char *line) {
   char **args;
   args = cshell_split_line(line, SEMICOLON_DELIM);
   return args;
 }
 
+/**
+ @brief Checks whether or not the input line contains only whitespace.
+ @param Line read from cshell_read_line
+ @return 1 if the line contains only white space, 0 if it contains arguments
+*/
 int is_empty(const char *s) {
   while (*s != '\0') {
     if (!isspace(*s))
@@ -509,7 +487,7 @@ int is_empty(const char *s) {
    @param argc Argument count
    @param argv Argument array of pointers
 */
-int main(int argc, char **argv, char **envp) {  
+int main(int argc, char **argv) {  
   char *line;
   char **args;
   char **cmds;
@@ -520,34 +498,19 @@ int main(int argc, char **argv, char **envp) {
   initialize();
   introScreen();
  
-  environ = envp;
   setenv("shell",getcwd(currentDir, 1024),1);
   
   do {
     if (no_reprint == 0) shellPrompt();
     no_reprint = 0;
-    //line = cshell_read_line();
     line = readline("");
     if(!is_empty(line)){
       add_history(line);
       cmds = parse_semicolon(line);
-      /* int j; */
-      /* for(j = 0; cmds[j] != NULL; j++) */
-      /*   { */
-      /* 	printf("%s,\t", cmds[j]); */
-      /*   } */
-      /* printf("\n"); */
       int i;
       for(i = 0; cmds[i] != NULL; i++) {
 	args = cshell_split_line(cmds[i], CSHELL_TOKEN_DELIM);
-	/* int k; */
-	/* for(k = 0; args[k] != NULL; k++) */
-	/*   { */
-	/* 	  printf("%s,\t", args[k]); */
-	/*   } */
-	/* printf("\n"); */
 	status = cshell_run(args);
-	/* printf("sec part: %s\n",cmds[1]); */
       }
       free(line);
       free(args);
