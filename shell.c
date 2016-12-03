@@ -39,9 +39,29 @@ void introScreen(){
  *Print out the user prompt each line. 
  */
 void shellPrompt(){
+  struct passwd* userdata = getpwuid( geteuid());
   char prompt[1204] = "";
   gethostname(prompt, sizeof(prompt));
-  printf("%s@%s %s > ", getenv("LOGNAME"), prompt, getcwd(currentDir, 1024));
+  char* cwd;
+  char buff[1024];
+  cwd = getcwd( buff, 1024);
+  char *checkhome = strstr(cwd, userdata->pw_dir);
+  char *tail;
+  if (!checkhome)
+    tail = 0;
+  else
+    tail = checkhome + strlen(userdata->pw_dir);
+   char return_cwd [] = "";
+  
+  if (!tail) {
+    strcpy(return_cwd, cwd);
+  }
+  else {
+   strcpy(return_cwd, "~");
+   strcat(return_cwd, tail);
+}
+
+  printf(GRN"%s@%s"RESET":"BLU"%s"RESET"$ ", getenv("LOGNAME"), prompt, return_cwd);
 }
 
 /**
