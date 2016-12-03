@@ -22,7 +22,7 @@ INSTRUCTIONS:
       
       Compile: make
       		
-      Run: make run
+      Run: ./a.out
       
       Clean: make clean
       
@@ -30,4 +30,10 @@ DOCUMENTATION:
       
       Check out documentation/CShell.pdf for more info!
 
+LIMITATIONS AND BUGS:
+     
+      Only single pipes
+      
+      Deleting of prompt 
 
+      make run does not work as intended
