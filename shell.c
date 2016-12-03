@@ -92,7 +92,6 @@ int cshell_cd(char* args[]){
  */ 
 void cshell_exec(char **args, int background){	 
   int err = -1;
-  printf("\n");
   if((pid=fork())==-1){
     printf("Child process could not be created\n");
     return;
