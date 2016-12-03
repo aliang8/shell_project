@@ -34,6 +34,4 @@ LIMITATIONS AND BUGS:
      
       Only single pipes
       
-      Deleting of prompt 
-
       make run does not work as intended

@@ -1,6 +1,6 @@
 compile: shell.c
 	gcc shell.c -Wall -lreadline
-run:
+run: ./a.out
 	./a.out
 clean:
 	rm *~
