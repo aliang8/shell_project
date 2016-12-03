@@ -483,16 +483,16 @@ int main(int argc, char **argv, char **envp) {
     if(!line)
       break;
     add_history(line);
-    cmds = parse_semicolon(line);
+    cmds = parse_semicolon(line);    
     int i;
-    /*
-    for(i = 0; i <= (sizeof(cmds) / sizeof(char*)); i++){
+    for(i = 0; cmds[i] != NULL; i++) {
+      printf("%i\n",i);
       args = cshell_split_line(cmds[i], CSHELL_TOKEN_DELIM);
       status = cshell_run(args);
       free(line);
       free(args);
     }
-    */
+    
   } while(status);
   return EXIT_SUCCESS;
 }
