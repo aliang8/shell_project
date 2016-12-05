@@ -120,31 +120,38 @@ void cshell_exec(char **args, int background){
  *@param option - controls whether we are writing or reading, > or <
  */ 
 void cshell_io(char * args[], char* inputFile, char* outputFile, int option){
-	 
+  
   int err = -1;
-	
+  
   int fileDescriptor; // between 0 and 19, describing the output or input file
-	
+  
   if((pid=fork())==-1){
     printf("Child process could not be created\n");
     return;
   }
   if(pid==0){
+    // Option 0: output redirection
     if (option == 0){
+      // We open (create) the file truncating it at 0, for write only
       fileDescriptor = open(outputFile, O_CREAT | O_TRUNC | O_WRONLY, 0600); 
+      // We replace de standard output with the appropriate file
       dup2(fileDescriptor, STDOUT_FILENO); 
       close(fileDescriptor);
+      // Option 1: input and output redirection
     }else if (option == 1){
+      // We open file for read only (it's STDIN)
       fileDescriptor = open(inputFile, O_RDONLY, 0600);  
+      // We replace de standard input with the appropriate file
       dup2(fileDescriptor, STDIN_FILENO);
       close(fileDescriptor);
+      // Same as before for the output file
       fileDescriptor = open(outputFile, O_CREAT | O_TRUNC | O_WRONLY, 0600);
       dup2(fileDescriptor, STDOUT_FILENO);
       close(fileDescriptor);		 
     }
-		 
+    
     setenv("parent",getcwd(currentDir, 1024),1);
-		
+    
     if (execvp(args[0],args)==err){
       printf("err");
       kill(getpid(),SIGTERM);
@@ -158,20 +165,27 @@ void cshell_io(char * args[], char* inputFile, char* outputFile, int option){
  *@param args - a list of arguments
  */ 
 void cshell_pipeHandle(char * args[]){
-  int filedes[2]; 
+  // File descriptors
+  int filedes[2]; // pos. 0 output, pos. 1 input of the pipe
   int filedes2[2];
-	
+  
   int num_cmds = 0;
-	
+  
   char *command[256];
-	
+  
   pid_t pid;
-	
+  
   int err = -1;
   int end = 0;
-        
-  int i, j, k, l = 0;
-        
+  
+  // Variables used for the different loops
+  int i = 0;
+  int j = 0;
+  int k = 0;
+  int l = 0;
+  
+  // First we calculate the number of commands (they are separated
+	// by '|')
   while (args[l] != NULL){
     if (strcmp(args[l],"|") == 0){
       num_cmds++;
@@ -179,66 +193,91 @@ void cshell_pipeHandle(char * args[]){
     l++;
   }
   num_cmds++;
-        
+  
+  // Main loop of this method. For each command between '|', the
+  // pipes will be configured and standard input and/or output will
+  // be replaced. Then it will be executed
   while (args[j] != NULL && end != 1){
     k = 0;
+    // We use an auxiliary array of pointers to store the command
+    // that will be executed on each iteration
     while (strcmp(args[j],"|") != 0){
       command[k] = args[j];
       j++;	
       if (args[j] == NULL){
+	// 'end' variable used to keep the program from entering
+	// again in the loop when no more arguments are found
 	end = 1;
 	k++;
 	break;
       }
       k++;
     }
+    // Last position of the command will be NULL to indicate that
+    // it is its end when we pass it to the exec function
     command[k] = NULL;
     j++;		
-	        
+    
+    // Depending on whether we are in an iteration or another, we
+    // will set different descriptors for the pipes inputs and
+    // output. This way, a pipe will be shared between each two
+    // iterations, enabling us to connect the inputs and outputs of
+    // the two different commands.
     if (i % 2 != 0){
-      pipe(filedes);
+      pipe(filedes); // for odd i
     }else{
-      pipe(filedes2); 
+      pipe(filedes2); // for even i
     }
-		
+    
     pid=fork();
-		
+    
     if(pid==-1){			
       if (i != num_cmds - 1){
 	if (i % 2 != 0){
-	  close(filedes[1]);
+	  close(filedes[1]); // for odd i
 	}else{
-	  close(filedes2[1]); 
+	  close(filedes2[1]); // for even i
 	} 
       }			
       printf("Child process could not be created\n");
       return;
     }
     if(pid==0){
+      // If we are in the first command
       if (i == 0){
 	dup2(filedes2[1], STDOUT_FILENO);
       }
+      // If we are in the last command, depending on whether it
+      // is placed in an odd or even position, we will replace
+      // the standard input for one pipe or another. The standard
+      // output will be untouched because we want to see the 
+      // output in the terminal
       else if (i == num_cmds - 1){
-	if (num_cmds % 2 != 0){ 
+	if (num_cmds % 2 != 0){ // for odd number of commands
 	  dup2(filedes[0],STDIN_FILENO);
-	}else{ 
+	}else{ // for even number of commands
 	  dup2(filedes2[0],STDIN_FILENO);
 	}
-      }else{
+	// If we are in a command that is in the middle, we will
+	// have to use two pipes, one for input and another for
+	// output. The position is also important in order to choose
+	// which file descriptor corresponds to each input/output
+      }else{ // for odd i
 	if (i % 2 != 0){
 	  dup2(filedes2[0],STDIN_FILENO); 
 	  dup2(filedes[1],STDOUT_FILENO);
-	}else{
+	}else{ // for even i
 	  dup2(filedes[0],STDIN_FILENO); 
 	  dup2(filedes2[1],STDOUT_FILENO);					
 	} 
       }
-			
+      
       if (execvp(command[0],command)==err){
 	kill(getpid(),SIGTERM);
       }		
     }
-			        
+    
+    // CLOSING DESCRIPTORS ON PARENT
     if (i == 0){
       close(filedes2[1]);
     }
@@ -257,13 +296,13 @@ void cshell_pipeHandle(char * args[]){
 	close(filedes2[1]);
       }
     }
-				
+    
     waitpid(pid,NULL,0);
-				
+    
     i++;	
   }
 }
-			
+
 /**
  *@brief Method used to handle the commands entered via the standard input
  *@param args - a list of arguments taken directly from the main loop
