@@ -4,25 +4,48 @@ by Anthony Liang, Shaeq Ahmed, Sam Xu
 
 SHELL FEATURES (OVERVIEW):
       
-      Forks and executes commands!
+      Intro screen (Cool ASCII text and colors)
       
-      Parses multiple commands on one line with ';'!
+      Basic shell functionalities and built in commands
+
+      Implemented Cd and exit
+
+      Simple Redirection 
+
+      	     Stdin (<)
+
+      	     Stdout (>)
+
+      	     Pipe (|)
       
-      Dynamically allocates memory for long commands!
-      
-      Redirects using >, <!
-      
-      Pipe commands stdin -> stdout!
-      
-      Implemented autocompletion and command history!
-      
-      Colorful prompt and cool intro text!
+      Can link multiple pipes together
+
+      More advanced redirection (&>,2>>,>>)
+
+      Dynamically reallocation of user input 
+
+      Parse multiple commands with ;  
+
+      Ignores weird spacing (“ls           -l”)
+
+      Prints bash prompt in linux format 
+
+      	     <user>@<hostname>:<cwd>$
+
+	     ~ if current working directory is home directory
+	     
+      Implemented autocomplete binded to TAB 
+
+      Stores command history, can access with UP arrow key
+
+      Cd prints out error statement if doesn’t exist
+
 
 INSTRUCTIONS:
       
       Compile: make
       		
-      Run: ./a.out
+      Run: make run
       
       Clean: make clean
       
@@ -32,6 +55,4 @@ DOCUMENTATION:
 
 LIMITATIONS AND BUGS:
      
-      Only single pipes
-      
-      make run does not work as intended
+      Did not implement redirection + pipe (ls | wc > foo.txt)

@@ -1,8 +1,0 @@
-a.out
-documentation
-foo.txt
-makefile
-readline
-README.md
-shell.c
-text.txt
