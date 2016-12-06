@@ -340,15 +340,10 @@ int cshell_run(char * args[]){
 	cshell_pipeHandle(args);
 	return 1;
       }else if (strcmp(args[i],">") == 0){ 
-       	if (args[i+1] == NULL){
-       	  printf("Not enough input arguments\n");
-       	  return -1;
-       	}
-       	cshell_io(args_temp,NULL,args[i+1],0);
-       	return 1;
+       	check(i,args,args_temp,NULL,args[i+1],0);
       }else if (strcmp(args[i],"<") == 0){
 	temp = i+1;
-	if (args[temp]){
+	if (args[temp] == NULL){
 	  printf("Not enough input arguments\n");
 	  return -1;
 	}else{
@@ -364,32 +359,30 @@ int cshell_run(char * args[]){
 	cshell_io(args_temp,args[i+1],args[i+3],1);
 	return 1;
       }else if (strcmp(args[i],"2>") == 0){
-	if (args[i+1] == NULL){
-	  printf("Not enough input arguments\n");
-	  return -1;
-	}
-	cshell_io(args_temp,NULL,args[i+1],2);
-	return 1;
+	check(i,args,args_temp,NULL,args[i+1],2);
       }else if (strcmp(args[i],">>") == 0){
-	if (args[i+1] == NULL){
-	  printf("Not enough input arguments\n");
-	  return -1;
-	}
-	cshell_io(args_temp,NULL,args[i+1],3);
-	return 1;
+	check(i,args,args_temp,NULL,args[i+1],3);
       }else if (strcmp(args[i],"&>") == 0){
-	if (args[i+1] == NULL){
-	  printf("Not enough input arguments\n");
-	  return -1;
-	}
-	cshell_io(args_temp,NULL,args[i+1],4);
-	return 1;
+	check(i,args,args_temp,NULL,args[i+1],4);
+      }else if (strcmp(args[i],"2>>") == 0){
+	check(i,args,args_temp,NULL,args[i+1],5);
       }
       i++;
     }
 
     cshell_exec(args_temp);
   }
+  return 1;
+}
+
+
+//helper function for cshell_io
+int check(int i, char **args, char **args_temp, char *input, char *output, int option){
+  if(args[i+1] == NULL){
+    printf("Not enough input arguments\n");
+    return -1;
+  }
+  cshell_io(args_temp,input,output,option);
   return 1;
 }
 
