@@ -383,6 +383,7 @@ int cshell_run(char * args[]){
 	background = 1;
       }else if (strcmp(args[i],"|") == 0){
 	cshell_pipeHandle(args);
+	cshell_run(args_temp);
 	return 1;
       }else if (strcmp(args[i],"<") == 0){
 	temp = i+1;
@@ -421,6 +422,7 @@ int cshell_run(char * args[]){
 	  return -1;
 	}
 	cshell_io(args_temp,NULL,args[i+1],0);
+	cshell_run(args_temp);
 	return 1;
       }else if (strcmp(args[i],"&>") == 0){
 	if (args[i+1] == NULL){
