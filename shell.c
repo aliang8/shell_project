@@ -29,7 +29,14 @@ Anthony Liang, Sam Xu, Shaeq Ahmed
  *@brief Prints a few pretty lines when u start the program
 */
 void introScreen(){
-  printf("\n\t===============================\n");
+  printf( "\n\t _____   _____  _            _  _ \n");
+printf("\t/  __ \\ /  ___|| |          | || |\n");
+printf("\t| /  \\/ \\ `--. | |__    ___ | || |\n");
+printf("\t| |      `--. \\| '_ \\  / _ \\| || |\n");
+printf("\t| \\__/\\ /\\__/ /| | | ||  __/| || |\n");
+printf(" \t \\____/ \\____/ |_| |_| \\___||_||_|\n");
+
+  printf("\n\t===============================\n\n");
   printf("\t            C Shell \n");
   printf("\t By Sam Xu, Anthony Liang, & Shaeq Ahmed \n");
   printf("\n\t===============================\n\n\n");
