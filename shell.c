@@ -47,9 +47,6 @@ printf(" \t \\____/ \\____/ |_| |_| \\___||_||_|\n");
  *@brief Prints out the user prompt in linux format, added custom COLORS to make it more aesthetic!
  */
 
-/**
- *@brief Prints out the user prompt in linux format, added custom COLORS to make it more aesthetic!
- */
 char* makeprompt(){
   //make the struct
   struct passwd *userdata = getpwuid( geteuid());
@@ -96,9 +93,9 @@ char* makeprompt(){
 }
 
 /**
- *@brief cd method
- *@param args -  the array  of arguments, directories in this case
- *@return each value reports the sucess rate of the arguments
+ *@brief CD method
+ *@param The array of arguments
+ *@return Value whether the function ran successfully
  */
 int cshell_cd(char* args[]){
   if (args[1] == NULL) {
@@ -115,11 +112,10 @@ int cshell_cd(char* args[]){
 }
 
 /**
- *@brief function responsible for excuting processes
- *@param args - the array of strings as arguments
- *@param background - checks whether a background process is occuring
+ *@brief Function responsible for executing processes
+ *@param Array of char pointers that represent the commands
  */ 
-void cshell_exec(char **args, int background){	 
+void cshell_exec(char **args){	 
   int err = -1;
   if((pid=fork())==-1){
     printf("Child process could not be created\n");
@@ -131,12 +127,10 @@ void cshell_exec(char **args, int background){
       printf("Command not found");
       kill(getpid(),SIGTERM);
     }
-  }	 
-  if (background == 0){
-    waitpid(pid,NULL,0);
-  }else{
-    printf("Process created with PID: %d\n",pid);
-  }	 
+  } else {
+    int status = 0;
+    waitpid(pid, &status, 0);
+  }
 }
  
 /**
@@ -188,8 +182,6 @@ void cshell_io(char * args[], char* inputFile, char* outputFile, int option){
       fileDescriptor = open(outputFile, O_RDWR | O_CREAT | O_EXCL, 0600);
       dup2(STDOUT_FILENO, STDERR_FILENO);
     }
-
-    setenv("parent",getcwd(currentDir, 1024),1);
    
     if (execvp(args[0],args)==err){
       printf("err");
@@ -432,46 +424,10 @@ int cshell_run(char * args[]){
       i++;
     }
 
-    cshell_exec(args_temp,background);
+    cshell_exec(args_temp);
   }
   return 1;
 }
-
-/**
- *  handler for SIGCHLD
- */
-void signalHandler_child(int p){
-  while (waitpid(-1, NULL, WNOHANG) > 0) {
-  }
-  printf("\n");
-}
-
-/**
- *  handler for SIGINT
- */
-void signalHandler_int(int p){
-  if (kill(pid,SIGTERM) == 0){
-    printf("\nprocess %d received SIGINT\n",pid);
-    no_reprint = 1;			
-  }else{
-    printf("\n");
-  }
-}
-
-/**
-   @brief Easier implementation of reading input dynamically
-   @return a line of string imported from user input / stdin
-*/
-char *cshell_read_line(){
-  char *line = NULL;
-  size_t bufsize = 0; // have getline allocate a buffer for us
-  getline(&line, &bufsize, stdin);
-  return line;
-}
-
-//Initial buffer size
-#define CSHELL_BUFSIZE 256
-
 
 /**
  @brief Split line 
