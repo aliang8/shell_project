@@ -14,7 +14,6 @@ Anthony Liang, Sam Xu, Shaeq Ahmed
 #include <fcntl.h>
 #include <sys/types.h>
 #include <pwd.h>
-#include "shell.h"
 #include <termios.h>
 #include <signal.h>
 #include <readline/readline.h>
@@ -26,7 +25,7 @@ Anthony Liang, Sam Xu, Shaeq Ahmed
 #define RESET "\x1B[0m"
 
 /**
- *@brief Prints a few pretty lines when u start the program
+   @brief Prints a few pretty lines when u start the program
 */
 void introScreen(){
   printf( "\n\t _____   _____  _            _  _ \n");
@@ -38,15 +37,13 @@ printf(" \t \\____/ \\____/ |_| |_| \\___||_||_|\n");
 
   printf("\n\t===============================\n\n");
   printf("\t            C Shell \n");
-  printf("\t By Sam Xu, Anthony Liang, & Shaeq Ahmed \n");
+  printf("\t Anthony Liang, Shaeq Ahmed, Sam Xu \n");
   printf("\n\t===============================\n\n\n");
 }
 
-
 /**
- *@brief Prints out the user prompt in linux format, added custom COLORS to make it more aesthetic!
- */
-
+   @brief Prints out the user prompt in linux format, added custom COLORS to make it more aesthetic!
+*/
 char* makeprompt(){
   //make the struct
   struct passwd *userdata = getpwuid( geteuid());
@@ -93,10 +90,10 @@ char* makeprompt(){
 }
 
 /**
- *@brief CD method
- *@param The array of arguments
- *@return Value whether the function ran successfully
- */
+   @brief CD method
+   @param Args-the array of arguments
+   @return Value whether the function ran successfully
+*/
 int cshell_cd(char* args[]){
   if (args[1] == NULL) {
     chdir(getenv("HOME"));
@@ -112,11 +109,12 @@ int cshell_cd(char* args[]){
 }
 
 /**
- *@brief Function responsible for executing processes
- *@param Array of char pointers that represent the commands
- */ 
+   @brief Function responsible for executing processes
+   @param Args-array of char pointers that represent the commands
+*/ 
 void cshell_exec(char **args){	 
   int err = -1;
+  pid_t pid;
   if((pid=fork())==-1){
     printf("Child process could not be created\n");
     return;
@@ -134,57 +132,55 @@ void cshell_exec(char **args){
 }
  
 /**
- *@brief this is a helper function that helps control the writing and reading of files
- *@param args - the array of strings as arguments
- *@param inputfile - name of the input file
- *@param outputfile - name of the output file
- *@param option - controls whether we are writing or reading, > or <
- */ 
-
-void cshell_io(char * args[], char* inputFile, char* outputFile, int option){
+   @brief Helper function to control the input/output of files
+   @param Args-array of commands, i-input, o-output, option-reading/writing
+*/ 
+void cshell_io(char * args[], char* i, char* o, int option){
   
   int err = -1;
-  
-  int fileDescriptor; // between 0 and 19, describing the output or input file
+  pid_t pid;
+  int fd;
   
   if((pid=fork())==-1){
     printf("Child process could not be created\n");
     return;
   }
   if(pid==0){
-    // Option 0: output redirection
+    // Option 0: >
     if (option == 0){
-      // We open (create) the file truncating it at 0, for write only
-      fileDescriptor = open(outputFile, O_CREAT | O_TRUNC | O_WRONLY, 0600); 
-      // We replace de standard output with the appropriate file
-      dup2(fileDescriptor, STDOUT_FILENO); 
-      close(fileDescriptor);
-      // Option 1: input and output redirection
-    }else if (option == 1){
-      // We open file for read only (it's STDIN)
-      fileDescriptor = open(inputFile, O_RDONLY, 0600);  
-      // We replace de standard input with the appropriate file
-      dup2(fileDescriptor, STDIN_FILENO);
-      close(fileDescriptor);
-      // Same as before for the output file
-      fileDescriptor = open(outputFile, O_CREAT | O_TRUNC | O_WRONLY, 0600);
-      dup2(fileDescriptor, STDOUT_FILENO);
-      close(fileDescriptor);		 
-    } else if (option == 2) {
-      fileDescriptor = open(outputFile, O_CREAT | O_TRUNC | O_WRONLY, 0600);
-      dup2(fileDescriptor, STDERR_FILENO);
-      close(fileDescriptor);
+      // we open (create) the file truncating it at 0, for write only
+      fd = open(o, O_CREAT | O_TRUNC | O_WRONLY, 0600); 
+      // replace STDOUT with appropriate file
+      dup2(fd, STDOUT_FILENO); 
+      close(fd);
+    }else if (option == 1){ // <
+      fd = open(i, O_RDONLY, 0600);  
+      dup2(fd, STDIN_FILENO);
+      close(fd);
+      fd = open(o, O_CREAT | O_TRUNC | O_WRONLY, 0644);
+      dup2(fd, STDOUT_FILENO);
+      close(fd);		 
+    } else if (option == 2) { // 
+      fd = open(o, O_CREAT | O_TRUNC | O_WRONLY, 0644);
+      dup2(fd, STDERR_FILENO);
+      close(fd);
     } else if (option == 3){
-      fileDescriptor = open(outputFile, O_RDWR | O_CREAT | O_APPEND, 0600);
-      dup2(fileDescriptor, STDOUT_FILENO);
-      close(fileDescriptor);
+      fd = open(o, O_RDWR | O_CREAT | O_APPEND, 0644);
+      dup2(fd, STDOUT_FILENO);
+      close(fd);
     } else if (option == 4){
-      fileDescriptor = open(outputFile, O_RDWR | O_CREAT | O_EXCL, 0600);
-      dup2(STDOUT_FILENO, STDERR_FILENO);
+      fd = open(o, O_RDWR | O_CREAT | O_EXCL, 0644);
+      dup2(fd, STDERR_FILENO);
+      dup2(fd, STDOUT_FILENO); 
+      close(fd);
+    } else if (option == 5){
+      fd = open(o, O_RDWR | O_CREAT | O_APPEND, 0644);
+      dup2(fd, STDERR_FILENO);
+      close(fd);
     }
    
     if (execvp(args[0],args)==err){
-      printf("err");
+      printf("Command failed to execute");
       kill(getpid(),SIGTERM);
     }   
   }
@@ -192,13 +188,13 @@ void cshell_io(char * args[], char* inputFile, char* outputFile, int option){
 }
 
 /**
- *@brief helper function responsible for the helper 
- *@param args - a list of arguments
+ @brief Helper function that handles piping, allows for multiple pipes
+ @param Args - input commands
  */ 
 void cshell_pipeHandle(char * args[]){
   // File descriptors
-  int filedes[2]; // pos. 0 output, pos. 1 input of the pipe
-  int filedes2[2];
+  int fd[2]; // pos. 0 output, pos. 1 input of the pipe
+  int fd2[2];
   
   int num_cmds = 0;
   
@@ -225,39 +221,25 @@ void cshell_pipeHandle(char * args[]){
   }
   num_cmds++;
   
-  // Main loop of this method. For each command between '|', the
-  // pipes will be configured and standard input and/or output will
-  // be replaced. Then it will be executed
   while (args[j] != NULL && end != 1){
     k = 0;
-    // We use an auxiliary array of pointers to store the command
-    // that will be executed on each iteration
     while (strcmp(args[j],"|") != 0){
       command[k] = args[j];
       j++;	
       if (args[j] == NULL){
-	// 'end' variable used to keep the program from entering
-	// again in the loop when no more arguments are found
 	end = 1;
 	k++;
 	break;
       }
       k++;
     }
-    // Last position of the command will be NULL to indicate that
-    // it is its end when we pass it to the exec function
     command[k] = NULL;
     j++;		
     
-    // Depending on whether we are in an iteration or another, we
-    // will set different descriptors for the pipes inputs and
-    // output. This way, a pipe will be shared between each two
-    // iterations, enabling us to connect the inputs and outputs of
-    // the two different commands.
     if (i % 2 != 0){
-      pipe(filedes); // for odd i
+      pipe(fd); // odd
     }else{
-      pipe(filedes2); // for even i
+      pipe(fd2); // even
     }
     
     pid=fork();
@@ -265,41 +247,31 @@ void cshell_pipeHandle(char * args[]){
     if(pid==-1){			
       if (i != num_cmds - 1){
 	if (i % 2 != 0){
-	  close(filedes[1]); // for odd i
+	  close(fd[1]); // for odd i
 	}else{
-	  close(filedes2[1]); // for even i
+	  close(fd2[1]); // for even i
 	} 
       }			
       printf("Child process could not be created\n");
       return;
     }
     if(pid==0){
-      // If we are in the first command
       if (i == 0){
-	dup2(filedes2[1], STDOUT_FILENO);
+	dup2(fd2[1], STDOUT_FILENO);
       }
-      // If we are in the last command, depending on whether it
-      // is placed in an odd or even position, we will replace
-      // the standard input for one pipe or another. The standard
-      // output will be untouched because we want to see the 
-      // output in the terminal
       else if (i == num_cmds - 1){
 	if (num_cmds % 2 != 0){ // for odd number of commands
-	  dup2(filedes[0],STDIN_FILENO);
+	  dup2(fd[0],STDIN_FILENO);
 	}else{ // for even number of commands
-	  dup2(filedes2[0],STDIN_FILENO);
+	  dup2(fd2[0],STDIN_FILENO);
 	}
-	// If we are in a command that is in the middle, we will
-	// have to use two pipes, one for input and another for
-	// output. The position is also important in order to choose
-	// which file descriptor corresponds to each input/output
       }else{ // for odd i
 	if (i % 2 != 0){
-	  dup2(filedes2[0],STDIN_FILENO); 
-	  dup2(filedes[1],STDOUT_FILENO);
+	  dup2(fd2[0],STDIN_FILENO); 
+	  dup2(fd[1],STDOUT_FILENO);
 	}else{ // for even i
-	  dup2(filedes[0],STDIN_FILENO); 
-	  dup2(filedes2[1],STDOUT_FILENO);					
+	  dup2(fd[0],STDIN_FILENO); 
+	  dup2(fd2[1],STDOUT_FILENO);					
 	} 
       }
       
@@ -308,23 +280,22 @@ void cshell_pipeHandle(char * args[]){
       }		
     }
     
-    // CLOSING DESCRIPTORS ON PARENT
     if (i == 0){
-      close(filedes2[1]);
+      close(fd2[1]);
     }
     else if (i == num_cmds - 1){
       if (num_cmds % 2 != 0){					
-	close(filedes[0]);
+	close(fd[0]);
       }else{					
-	close(filedes2[0]);
+	close(fd2[0]);
       }
     }else{
       if (i % 2 != 0){					
-	close(filedes2[0]);
-	close(filedes[1]);
+	close(fd2[0]);
+	close(fd[1]);
       }else{					
-	close(filedes[0]);
-	close(filedes2[1]);
+	close(fd[0]);
+	close(fd2[1]);
       }
     }
     
@@ -335,21 +306,15 @@ void cshell_pipeHandle(char * args[]){
 }
 
 /**
- *@brief Method used to handle the commands entered via the standard input
- *@param args - a list of arguments taken directly from the main loop
+ @brief Method used to handle the commands entered via the standard input
+ @param Args - a list of arguments taken directly from the main loop
+ @return Returns an integer to indicate success of the function
  */ 
 int cshell_run(char * args[]){
-
-
   int i = 0;
   int j = 0;
 	
-  int fileDescriptor;
-  int standardOut;
-	
   int temp;
-  int background = 0;
-	
   char *args_temp[256];
         
   while (args[j] != NULL){
@@ -357,27 +322,33 @@ int cshell_run(char * args[]){
 	|| (strcmp(args[j],">") == 0)
 	|| (strcmp(args[j],">>") == 0)
 	|| (strcmp(args[j],"<") == 0) 
-	|| (strcmp(args[j],"&>") == 0)){
+	|| (strcmp(args[j],"&>") == 0)
+	|| (strcmp(args[j],"2>>") == 0)){
       break;
     }
     args_temp[j] = args[j];
     j++;
   }
   args_temp[j] = NULL;
-	
-  // 'exit' command quits the shell
+       
+  //handling the events of each command separately
   if(strcmp(args[0],"exit") == 0) exit(0);
   else if (strcmp(args[0],"cd") == 0) cshell_cd(args);
   else{
-    while (args[i] != NULL && background == 0){
-      if (strcmp(args[i],"&") == 0){
-	background = 1;
-      }else if (strcmp(args[i],"|") == 0){
+    while (args[i] != NULL){
+      if (strcmp(args[i],"|") == 0){ //pipes
 	cshell_pipeHandle(args);
 	return 1;
+      }else if (strcmp(args[i],">") == 0){ 
+       	if (args[i+1] == NULL){
+       	  printf("Not enough input arguments\n");
+       	  return -1;
+       	}
+       	cshell_io(args_temp,NULL,args[i+1],0);
+       	return 1;
       }else if (strcmp(args[i],"<") == 0){
 	temp = i+1;
-	if (args[temp] == NULL/* || args[temp+1] == NULL || args[temp+2] == NULL */){
+	if (args[temp]){
 	  printf("Not enough input arguments\n");
 	  return -1;
 	}else{
@@ -405,13 +376,6 @@ int cshell_run(char * args[]){
 	  return -1;
 	}
 	cshell_io(args_temp,NULL,args[i+1],3);
-	return 1;
-      }else if (strcmp(args[i],">") == 0){
-	if (args[i+1] == NULL){
-	  printf("Not enough input arguments\n");
-	  return -1;
-	}
-	cshell_io(args_temp,NULL,args[i+1],0);
 	return 1;
       }else if (strcmp(args[i],"&>") == 0){
 	if (args[i+1] == NULL){
@@ -484,9 +448,9 @@ int is_empty(const char *s) {
 }
 
 /**
-   @brief Loop for shell 
-   @param argc Argument count
-   @param argv Argument array of pointers
+   @brief Main loop for the shell
+   @param argc - Argument count
+   @param argv - Argument array of pointers
 */
 int main(int argc, char **argv) {  
   char *line;
