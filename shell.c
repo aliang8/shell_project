@@ -176,7 +176,7 @@ void cshell_io(char * args[], char* inputFile, char* outputFile, int option){
       dup2(fileDescriptor, STDERR_FILENO);
       close(fileDescriptor);
     } else if (option == 3){
-      fileDescriptor = open(outputFile, O_CREAT | O_EXCL | O_APPEND, 0600);
+      fileDescriptor = open(outputFile, O_APPEND, 0600);
       dup2(fileDescriptor, STDOUT_FILENO);
       close(fileDescriptor);
     }
@@ -428,6 +428,13 @@ int cshell_run(char * args[]){
 	  return -1;
 	}
 	cshell_io(args_temp,NULL,args[i+1],0);
+	return 1;
+      }else if (strcmp(args[i],"&>") == 0){
+	if (args[i+1] == NULL){
+	  printf("Not enough input arguments\n");
+	  return -1;
+	}
+	cshell_io(args_temp,NULL,args[i+1],4);
 	return 1;
       }
       i++;
