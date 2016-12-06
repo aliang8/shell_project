@@ -153,7 +153,8 @@ void cshell_io(char * args[], char* inputFile, char* outputFile, int option){
       fileDescriptor = open(outputFile, O_CREAT | O_TRUNC | O_WRONLY, 0600);
       dup2(fileDescriptor, STDERR_FILENO);
       close(fileDescriptor);
-    }
+    } else if (option == 3){
+      fileDescriptor = open(outputFile, 
     
     setenv("parent",getcwd(currentDir, 1024),1);
    
