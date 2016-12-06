@@ -102,7 +102,7 @@ char* makeprompt(){
  */
 int cshell_cd(char* args[]){
   if (args[1] == NULL) {
-    chdir(getenv("HOME")); 
+    chdir(getenv("HOME"));
     return 1;
   }
   else{ 
@@ -126,14 +126,12 @@ void cshell_exec(char **args, int background){
     return;
   }
   if(pid==0){
-    signal(SIGINT, SIG_IGN);
-    setenv("parent",getcwd(currentDir, 1024),1);        
+    signal(SIGINT, SIG_IGN);        
     if (execvp(args[0],args)==err){
       printf("Command not found");
       kill(getpid(),SIGTERM);
     }
-  }
-	 
+  }	 
   if (background == 0){
     waitpid(pid,NULL,0);
   }else{
@@ -189,6 +187,7 @@ void cshell_io(char * args[], char* inputFile, char* outputFile, int option){
     } else if (option == 4){
       fileDescriptor = open(outputFile, O_RDWR | O_CREAT | O_EXCL, 0600);
       dup2(STDOUT_FILENO, STDERR_FILENO);
+    }
 
     setenv("parent",getcwd(currentDir, 1024),1);
    
@@ -383,7 +382,6 @@ int cshell_run(char * args[]){
 	background = 1;
       }else if (strcmp(args[i],"|") == 0){
 	cshell_pipeHandle(args);
-	cshell_run(args_temp);
 	return 1;
       }else if (strcmp(args[i],"<") == 0){
 	temp = i+1;
@@ -422,7 +420,6 @@ int cshell_run(char * args[]){
 	  return -1;
 	}
 	cshell_io(args_temp,NULL,args[i+1],0);
-	cshell_run(args_temp);
 	return 1;
       }else if (strcmp(args[i],"&>") == 0){
 	if (args[i+1] == NULL){
@@ -460,45 +457,6 @@ void signalHandler_int(int p){
     printf("\n");
   }
 }
-
-/**
-   @brief Making sure the subshell is not running as a foreground job. 
-   *Initialize the pid of the subshell so it could support job control
-   *Post initialization allows the sub-shell to have its own child processes
-   *We used the approach explained here to set things up
-   *www.gnu.org/software/libc/manual/html_node/Initializing-the-Shell.html
-   */
-void initialize(){
-  SH_PID = getpid();
-  SH_IS_INTERACTIVE = isatty(STDIN_FILENO); //safety
-  
-  if (SH_IS_INTERACTIVE){
-    //Loop the shell into the foreground
-    while(tcgetpgrp(STDIN_FILENO) != (SH_PGID = getpgrp()))
-      kill(SH_PID,SIGTTIN);
-
-    
-    act_child.sa_handler = signalHandler_child;
-    act_int.sa_handler = signalHandler_int;
-
-    sigaction(SIGCHLD, &act_child, 0);
-    sigaction(SIGINT, &act_int, 0);
-
-    setpgid(SH_PID, SH_PID);
-    SH_PGID = getpgrp();
-    if(SH_PID != SH_PGID){
-      printf("Something went wrong, unable to set shell as process leader");
-      exit(EXIT_FAILURE);
-    }
-
-    currentDir = (char*) calloc(1024, sizeof(char));
-
-    //sets and controls the terminal with the shell
-    tcsetpgrp(STDIN_FILENO, SH_PGID);
-    tcgetattr(STDIN_FILENO, &SH_TMODES);
-  }
-}
-
 
 /**
    @brief Easier implementation of reading input dynamically
@@ -579,17 +537,10 @@ int main(int argc, char **argv) {
   char **args;
   char **cmds;
   int status;
-  
-  no_reprint = 0;
-  pid = -1337; //unusable pid for default
-  initialize();
+
   introScreen();
- 
-  setenv("shell",getcwd(currentDir, 1024),1);
   
   do {
-    if (no_reprint == 0)// shellPrompt();
-      no_reprint = 0;
     line = readline(makeprompt());
     if(!is_empty(line)){
       add_history(line);
