@@ -39,31 +39,53 @@ void introScreen(){
 /**
  *@brief Prints out the user prompt in linux format, added custom COLORS to make it more aesthetic!
  */
-void shellPrompt(){
-  struct passwd* userdata = getpwuid( geteuid());
-  char prompt[1204] = "";
-  gethostname(prompt, sizeof(prompt));
-  char* cwd;
-  char buff[1024];
-  cwd = getcwd( buff, 1024);
-  char *checkhome = strstr(cwd, userdata->pw_dir);
-  char *tail;
-  if (!checkhome)
-    tail = 0;
-  else
-    tail = checkhome + strlen(userdata->pw_dir);
-  char return_cwd [] = "";
+
+/**
+ *@brief Prints out the user prompt in linux format, added custom COLORS to make it more aesthetic!
+ */
+char* makeprompt(){
+  //make the struct
+  struct passwd *userdata = getpwuid( geteuid());
+  //get the username
+  char *username = (char *) malloc( 33 );
+  strcpy(username, userdata->pw_name);
+  //get the hostname
+  char *hostname = (char *) malloc( 65 );
+  gethostname(hostname, 64);
+  //get and format cwd (replace with ~ for $HOME)
+  int size = 1;
+  char *cwd = (char *) malloc(size * sizeof(char));
+  while (! getcwd(cwd, size) )
+  {
+    size++;
+    cwd = (char *) realloc( cwd, size * sizeof(char) );
+  }
+  char *check_home_dir = strstr(cwd, userdata->pw_dir);
+  char *end_part;
   
-  if (!tail) {
-    strcpy(return_cwd, cwd);
-  }
-  else {
+  if (! check_home_dir)
+    end_part = 0;
+  else
+    end_part = check_home_dir + strlen(userdata->pw_dir);
+
+  char *return_cwd = 0;
+
+  if (! end_part)
+    return_cwd = cwd;
+  else
+  {
+    return_cwd = malloc( size + strlen(end_part)+1);
     strcpy(return_cwd, "~");
-    strcat(return_cwd, tail);
+    strcat(return_cwd, end_part);
   }
+  char* ret = malloc(strlen(return_cwd)+99);
+  sprintf(ret,GRN"%s@%s"RESET":"BLU"%s"RESET"$ ", username, hostname, return_cwd); //ayy colorful prompt
 
-  printf(GRN"%s@%s"RESET":"BLU"%s"RESET"$", getenv("LOGNAME"), prompt, return_cwd);
-
+  free(hostname);
+  free(username);
+  free(cwd);
+  free(return_cwd);
+  return ret;
 }
 
 /**
@@ -152,6 +174,10 @@ void cshell_io(char * args[], char* inputFile, char* outputFile, int option){
     } else if (option == 2) {
       fileDescriptor = open(outputFile, O_CREAT | O_TRUNC | O_WRONLY, 0600);
       dup2(fileDescriptor, STDERR_FILENO);
+      close(fileDescriptor);
+    } else if (option == 3){
+      fileDescriptor = open(outputFile, O_CREAT | O_EXCL | O_APPEND, 0600);
+      dup2(fileDescriptor, STDOUT_FILENO);
       close(fileDescriptor);
     }
     
@@ -560,9 +586,9 @@ int main(int argc, char **argv) {
   setenv("shell",getcwd(currentDir, 1024),1);
   
   do {
-    if (no_reprint == 0) shellPrompt();
-    no_reprint = 0;
-    line = readline(" ");
+    if (no_reprint == 0)// shellPrompt();
+      no_reprint = 0;
+    line = readline(makeprompt());
     if(!is_empty(line)){
       add_history(line);
       cmds = parse_semicolon(line);
