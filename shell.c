@@ -176,11 +176,13 @@ void cshell_io(char * args[], char* inputFile, char* outputFile, int option){
       dup2(fileDescriptor, STDERR_FILENO);
       close(fileDescriptor);
     } else if (option == 3){
-      fileDescriptor = open(outputFile, O_APPEND, 0600);
+      fileDescriptor = open(outputFile, O_RDWR | O_CREAT | O_APPEND, 0600);
       dup2(fileDescriptor, STDOUT_FILENO);
       close(fileDescriptor);
-    }
-    
+    } else if (option == 4){
+      fileDescriptor = open(outputFile, O_RDWR | O_CREAT | O_EXCL, 0600);
+      dup2(STDOUT_FILENO, STDERR_FILENO);
+
     setenv("parent",getcwd(currentDir, 1024),1);
    
     if (execvp(args[0],args)==err){
@@ -353,36 +355,20 @@ int cshell_run(char * args[]){
   char *args_temp[256];
         
   while (args[j] != NULL){
-    if ((strcmp(args[j],"2>") == 0) || (strcmp(args[j],">") == 0) || (strcmp(args[j],"<") == 0) || (strcmp(args[j],"&") == 0)){
+    if ((strcmp(args[j],"2>") == 0)
+	|| (strcmp(args[j],">") == 0)
+	|| (strcmp(args[j],">>") == 0)
+	|| (strcmp(args[j],"<") == 0) 
+	|| (strcmp(args[j],"&>") == 0)){
       break;
     }
     args_temp[j] = args[j];
-    printf("%s\n",args_temp[j]);
     j++;
   }
   args_temp[j] = NULL;
 	
   // 'exit' command quits the shell
   if(strcmp(args[0],"exit") == 0) exit(0);
-  else if (strcmp(args[0],"clear") == 0) system("clear");
-  // 'pwd' command prints the current directory
-  else if (strcmp(args[0],"pwd") == 0){
-    if (args[j] != NULL){
-      // If we want file output
-      if ( (strcmp(args[j],">") == 0) && (args[j+1] != NULL) ){
-	fileDescriptor = open(args[j+1], O_CREAT | O_TRUNC | O_WRONLY, 0600); 
-	// We replace de standard output with the appropriate file
-	standardOut = dup(STDOUT_FILENO); 	// first we make a copy of stdout
-	// because we'll want it back
-	dup2(fileDescriptor, STDOUT_FILENO); 
-	close(fileDescriptor);
-	printf("%s\n", getcwd(currentDir, 1024));
-	dup2(standardOut, STDOUT_FILENO);
-      }
-    }else{
-      printf("%s\n", getcwd(currentDir, 1024));
-    }
-  } 
   else if (strcmp(args[0],"cd") == 0) cshell_cd(args);
   else{
     while (args[i] != NULL && background == 0){
